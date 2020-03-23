@@ -67,31 +67,31 @@ public extension ExpectReturn {
         
         return copy
     }
+}
+
+public extension ExpectReturn {
+    enum Action {
+        case `return`(R)
+        case perform((Args) -> R)
+    }
     
-    func willOnce(_ action: @escaping (Args) -> R) {
+    
+    func willOnce(_ action: Action) {
         willRepeatedly(.count(1), action)
     }
     
-    func willOnce(_ value: R) {
-        willOnce({ _ in value })
-    }
-    
-    func willRepeatedly(_ times: ExpectTimes, _ action: @escaping (Args) -> R) {
-        addExpectation(description, times, matcher, argumentCaptor, action)
-    }
-    
-    func willRepeatedly(_ times: ExpectTimes, value: R) {
-        willRepeatedly(times, { _ in value })
+    func willRepeatedly(_ times: ExpectTimes, _ action: Action) {
+        addExpectation(description, times, matcher, argumentCaptor, action.action)
     }
 }
 
 public extension ExpectReturn where R == Void {
      func willOnce() {
-        willOnce(())
+        willOnce(.return(()))
     }
     
     func willRepeatedly(_ times: ExpectTimes) {
-        willRepeatedly(times, value: ())
+        willRepeatedly(times, .return(()))
     }
 }
 
@@ -235,6 +235,17 @@ private extension ExpectTimes {
             return Int.max
         case .count(let count):
             return count
+        }
+    }
+}
+
+private extension ExpectReturn.Action {
+    var action: (Args) -> R {
+        switch self {
+        case .return(let value):
+            return { _ in value }
+        case .perform(let action):
+            return action
         }
     }
 }
