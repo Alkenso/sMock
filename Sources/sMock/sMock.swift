@@ -3,8 +3,10 @@ import XCTest
 
 // MARK: - ExpectMatch
 
+public typealias Matcher<Args> = (Args) -> Bool
+
 public extension ExpectMatch {
-    func match(_ matcher: @escaping (Args) -> Bool) -> ExpectReturn<Args, R> {
+    func match(_ matcher: @escaping Matcher<Args>) -> ExpectReturn<Args, R> {
         ExpectReturn(description: description, matcher: matcher, addExpectation: addExpectation)
     }
     
@@ -20,6 +22,13 @@ public extension ExpectMatch where Args: Equatable {
 }
 
 
+// MARK: Matchers
+
+public func Contains<C: Collection>(_ collection: C) -> Matcher<C.Element> where C.Element: Equatable {
+    return { (element: C.Element) in collection.contains(element) }
+}
+
+
 // MARK: - ExpectReturn
 
 public enum ExpectTimes {
@@ -28,20 +37,27 @@ public enum ExpectTimes {
 }
 
 public extension ExpectReturn {
-    func willOnce(_ action: @escaping () -> R) {
-        addExpectation(description, .count(1), matcher, action)
+    func capture(_ captor: ArgumentCaptor<Args>) -> ExpectReturn<Args, R> {
+        var copy = self
+        copy.argumentCaptor = captor
+        
+        return copy
+    }
+    
+    func willOnce(_ action: @escaping (Args) -> R) {
+        willRepeatedly(.count(1), action)
     }
     
     func willOnce(_ value: R) {
-        willOnce({ value })
+        willOnce({ _ in value })
     }
     
-    func willRepeatedly(_ times: ExpectTimes, _ action: @escaping () -> R) {
-        addExpectation(description, times, matcher, action)
+    func willRepeatedly(_ times: ExpectTimes, _ action: @escaping (Args) -> R) {
+        addExpectation(description, times, matcher, argumentCaptor, action)
     }
     
     func willRepeatedly(_ times: ExpectTimes, value: R) {
-        willRepeatedly(times, { value })
+        willRepeatedly(times, { _ in value })
     }
 }
 
@@ -52,6 +68,17 @@ public extension ExpectReturn where R == Void {
     
     func willRepeatedly(_ times: ExpectTimes) {
         willRepeatedly(times, value: ())
+    }
+}
+
+
+// MARK: - ArgumentCaptor
+
+public extension ArgumentCaptor {
+    var captured: [Args] { capturedArgs }
+    
+    static func create(_ onCapture: @escaping (Args) -> Void = { _ in }) -> ArgumentCaptor<Args> {
+        ArgumentCaptor<Args>(onCapture)
     }
 }
 
@@ -71,7 +98,7 @@ public extension MockMethod {
         
         expectation.count -= 1
         
-        return expectation.action()
+        return expectation.action(args)
     }
 }
 
@@ -97,11 +124,11 @@ public class MockMethod<Args, R> {
     
     private class Expectation {
         var count: Int
-        let matcher: (Args) -> Bool
-        let action: () -> R
+        let matcher: Matcher<Args>
+        let action: (Args) -> R
         
         
-        init(count: Int, matcher: @escaping (Args) -> Bool, action: @escaping () -> R) {
+        init(count: Int, matcher: @escaping (Args) -> Bool, action: @escaping (Args) -> R) {
             self.count = count
             self.matcher = matcher
             self.action = action
@@ -113,11 +140,12 @@ public class MockMethod<Args, R> {
     private let test: XCTestCase
     
     
-    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping (Args) -> Bool, action: @escaping () -> R) {
+    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captor: ArgumentCaptor<Args>?, action: @escaping (Args) -> R) {
         let exp = times.expectation(test: test, description: description)
         expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: {
             exp?.fulfill()
-            return action()
+            captor?.capture($0)
+            return action($0)
         }))
     }
     
@@ -134,13 +162,30 @@ public class MockMethod<Args, R> {
 
 public struct ExpectMatch<Args, R> {
     fileprivate let description: String
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping (Args) -> Bool, @escaping () -> R) -> Void
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, ArgumentCaptor<Args>?, @escaping (Args) -> R) -> Void
 }
 
 public struct ExpectReturn<Args, R> {
     fileprivate let description: String
-    fileprivate let matcher: (Args) -> Bool
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping (Args) -> Bool, @escaping () -> R) -> Void
+    fileprivate let matcher: Matcher<Args>
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, ArgumentCaptor<Args>?, @escaping (Args) -> R) -> Void
+    fileprivate var argumentCaptor: ArgumentCaptor<Args>?
+}
+
+public class ArgumentCaptor<Args> {
+    private let onCapture: (Args) -> Void
+    private var capturedArgs: [Args] = []
+    
+    
+    func capture(_ args: Args) {
+        capturedArgs.append(args)
+        onCapture(args)
+    }
+    
+    
+    private init(_ onCapture: @escaping (Args) -> Void) {
+        self.onCapture = onCapture
+    }
 }
 
 private extension ExpectTimes {
@@ -176,10 +221,11 @@ private extension XCTestCase {
             let builtInObservers = XCTestObservationCenter.shared.perform(NSSelectorFromString("observers")),
             let builtInObserverArray = builtInObservers.takeUnretainedValue() as? [NSObject],
             let misuseObserver = builtInObserverArray.first(where: { $0.isKind(of: cl) }),
-            let currentCase = misuseObserver.perform(NSSelectorFromString("currentTestCase"))?.takeUnretainedValue() as? XCTestCase else {
+            let currentCaseAny = misuseObserver.perform(NSSelectorFromString("currentTestCase")),
+            let currentCase = currentCaseAny.takeUnretainedValue() as? XCTestCase else {
                 fatalError("Failed to obtain current test case. Please use explicit transfer of current test case.")
         }
-        
+
         return currentCase
     }
 }
