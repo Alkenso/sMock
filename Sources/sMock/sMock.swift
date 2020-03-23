@@ -89,6 +89,10 @@ public class MockMethod<Args, R> {
         self.test = test
     }
     
+    public convenience init() {
+        self.init(.currentTestCase)
+    }
+    
     //  MARK: Private
     
     private class Expectation {
@@ -163,5 +167,19 @@ private extension ExpectTimes {
         case .count(let count):
             return count
         }
+    }
+}
+
+private extension XCTestCase {
+    static var currentTestCase: XCTestCase {
+        guard let cl: AnyClass = NSClassFromString("XCTestMisuseObserver"),
+            let builtInObservers = XCTestObservationCenter.shared.perform(NSSelectorFromString("observers")),
+            let builtInObserverArray = builtInObservers.takeUnretainedValue() as? [NSObject],
+            let misuseObserver = builtInObserverArray.first(where: { $0.isKind(of: cl) }),
+            let currentCase = misuseObserver.perform(NSSelectorFromString("currentTestCase"))?.takeUnretainedValue() as? XCTestCase else {
+                fatalError("Failed to obtain current test case. Please use explicit transfer of current test case.")
+        }
+        
+        return currentCase
     }
 }
