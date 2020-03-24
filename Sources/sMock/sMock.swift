@@ -30,16 +30,19 @@ import XCTest
 public typealias Matcher<Args> = (Args) -> Bool
 
 public extension ExpectMatch {
+    /// Expectation will be matched using the matcher.
     func match(_ matcher: @escaping Matcher<Args>) -> ExpectReturn<Args, R> {
         ExpectReturn(description: description, matcher: matcher, addExpectation: addExpectation)
     }
     
+    /// Expectation will always be matched.
     func matchAll() -> ExpectReturn<Args, R> {
         match({ _ in true })
     }
 }
 
 public extension ExpectMatch where Args: Equatable {
+    /// Expectation will be matched by comparison with value.
     func match(_ value: Args) -> ExpectReturn<Args, R> {
         match({ $0 == value })
     }
@@ -49,11 +52,15 @@ public extension ExpectMatch where Args: Equatable {
 // MARK: - ExpectReturn
 
 public enum ExpectTimes {
+    /// Exact number of calls.
     case count(Int)
+    
+    /// Any (0..∞) number of calls.
     case unlimited
 }
 
 public extension ExpectReturn {
+    /// Adds 'captor' that captures arguments.
     func capture(_ captor: ArgumentCaptor<Args>) -> ExpectReturn<Args, R> {
         var copy = self
         copy.argumentCaptor = captor
@@ -69,20 +76,24 @@ public extension ExpectReturn {
     }
     
     
+    /// Assumes expectation will be triggerred only once.
     func willOnce(_ action: Action) {
         willRepeatedly(.count(1), action)
     }
     
+    /// Assumes expectation will be triggerred specific number of times.
     func willRepeatedly(_ times: ExpectTimes, _ action: Action) {
         addExpectation(description, times, matcher, argumentCaptor, action.action)
     }
 }
 
 public extension ExpectReturn where R == Void {
+    /// Assumes expectation will be triggerred only once.
      func willOnce() {
         willOnce(.return(()))
     }
     
+    /// Assumes expectation will be triggerred specific number of times.
     func willRepeatedly(_ times: ExpectTimes) {
         willRepeatedly(times, .return(()))
     }
@@ -92,8 +103,10 @@ public extension ExpectReturn where R == Void {
 // MARK: - ArgumentCaptor
 
 public extension ArgumentCaptor {
+    /// Array of captured arguments. Last value is the latest captured one.
     var captured: [Args] { capturedArgs }
     
+    /// Creates captor. 'onCapture' block will be called on each matched call.
     static func create(_ onCapture: @escaping (Args) -> Void = { _ in }) -> ArgumentCaptor<Args> {
         ArgumentCaptor<Args>(onCapture)
     }
@@ -103,10 +116,12 @@ public extension ArgumentCaptor {
 // MARK: - MockMethod
 
 public extension MockMethod {
+    /// Makes an expectation regarding method call.
     func expect(_ description: String) -> ExpectMatch<Args, R> {
         ExpectMatch(description: description, addExpectation: addExpectation)
     }
     
+    /// Should be called inside mocked method implementation, passing all method parameters as Args tuple.
     func evaluate(_ args: Args, function: String = #function) -> R? {
         guard let expectation = find(args, skip: 0) else {
             XCTFail("Unexpected call to \(function).")
@@ -120,6 +135,7 @@ public extension MockMethod {
 }
 
 public extension MockMethod where Args == Void {
+    /// Should be called inside mocked method implementation.
     func evaluate(function: String = #function) -> R? {
         evaluate((), function: function)
     }
@@ -129,6 +145,7 @@ public extension MockMethod where Args == Void {
 // MARK: - Other + Internal/Private
 
 public class MockMethod<Args, R> {
+    /// Creates MockMethod
     public init(_ test: XCTestCase) {
         self.test = test
     }
