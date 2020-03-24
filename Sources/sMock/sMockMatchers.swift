@@ -27,7 +27,7 @@ import Foundation
 
 // MARK: - Multiple argument match
 
-public enum TupleMatcher<Arg> {
+public enum PartialMatcher<Arg> {
     case any
     case matcher(Matcher<Arg>)
     
@@ -41,11 +41,11 @@ public enum TupleMatcher<Arg> {
     }
 }
 
-public func AllOf<T0, T1>(_ matcher0: TupleMatcher<T0>, _ matcher1: TupleMatcher<T1>) -> Matcher<(T0, T1)> {
+public func AllOf<T0, T1>(_ matcher0: PartialMatcher<T0>, _ matcher1: PartialMatcher<T1>) -> Matcher<(T0, T1)> {
     return { matcher0.match($0.0) && matcher1.match($0.1) }
 }
 
-public func AllOf<T0, T1, T2>(_ matcher0: TupleMatcher<T0>, _ matcher1: TupleMatcher<T1>, _ matcher2: TupleMatcher<T2>) -> Matcher<(T0, T1, T2)> {
+public func AllOf<T0, T1, T2>(_ matcher0: PartialMatcher<T0>, _ matcher1: PartialMatcher<T1>, _ matcher2: PartialMatcher<T2>) -> Matcher<(T0, T1, T2)> {
     return { matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) }
 }
 
