@@ -25,31 +25,110 @@
 import XCTest
 
 
-// MARK: - ExpectMatch
+// MARK: - Mock Engine
+
+public extension MockFunction {
+    /// Makes an expectation for mock call.
+    func expect(_ description: String) -> ExpectMatch<Args, R> {
+        ExpectMatch(description: description, addExpectation: addExpectation)
+    }
+}
+
+
+// MARK: MockMethod
+
+public class MockMethod<Args, R>: MockFunction<Args, R> {
+    public init() { }
+    
+    /// Should be called inside mocked method implementation.
+    public func call(_ args: Args, functionName: String = #function) -> R? {
+        evaluate(args, functionName)
+    }
+}
+
+public extension MockMethod where Args == Void {
+    /// Should be called inside mocked method implementation.
+    func call(functionName: String = #function) -> R? {
+        call((), functionName: functionName)
+    }
+}
+
+
+// MARK: MockClosure
+
+public class MockClosure<Args, R>: MockFunction<Args, R> {
+    private let closureName: String
+    
+    
+    public init(_ closureName: String = "Anonymous closure.") {
+        self.closureName = closureName
+    }
+    
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    public func asClosure(_ defaultReturn: R) -> (Args) -> R {
+        return { self.evaluate($0, self.closureName) ?? defaultReturn }
+    }
+}
+
+public extension MockClosure where R == Void {
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    func asClosure() -> (Args) -> R {
+        return asClosure(())
+    }
+}
+
+
+// MARK: MockSetter
+
+public class MockSetter<T>: MockFunction<T, Void> {
+    private let propertyName: String
+    private let captor: InitedArgumentCaptor<T>
+
+    
+    public init(_ propertyName: String, _ value: T) {
+        self.propertyName = propertyName
+        self.captor = .create(initialValue: value)
+        
+        super.init(captor)
+    }
+    
+    /// Should be called inside mocked property getter.
+    public func callGet() -> T {
+        captor.lastCaptured
+    }
+    
+    /// Should be called inside mocked property setter.
+    public func callSet(_ value: T) {
+        evaluate(value, propertyName)
+    }
+}
+
+
+// MARK: - Match expectations
 
 public typealias Matcher<Args> = (Args) -> Bool
 
 public extension ExpectMatch {
     /// Expectation will be matched using the matcher.
-    func match(_ matcher: @escaping Matcher<Args>) -> ExpectReturn<Args, R> {
-        ExpectReturn(description: description, matcher: matcher, addExpectation: addExpectation)
+    func match(_ matcher: @escaping Matcher<Args>) -> OnMatchAction<Args, R> {
+        OnMatchAction(description: description, matcher: matcher, addExpectation: addExpectation)
     }
     
     /// Expectation will always be matched.
-    func matchAll() -> ExpectReturn<Args, R> {
+    func matchAll() -> OnMatchAction<Args, R> {
         match({ _ in true })
     }
 }
 
 public extension ExpectMatch where Args: Equatable {
     /// Expectation will be matched by comparison with value.
-    func match(_ value: Args) -> ExpectReturn<Args, R> {
+    func match(_ value: Args) -> OnMatchAction<Args, R> {
         match({ $0 == value })
     }
 }
 
 
-// MARK: - ExpectReturn
+// MARK: - On-Match actions
 
 public enum ExpectTimes {
     /// Exact number of calls.
@@ -59,17 +138,7 @@ public enum ExpectTimes {
     case unlimited
 }
 
-public extension ExpectReturn {
-    /// Adds 'captor' that captures arguments.
-    func capture(_ captor: ArgumentCaptor<Args>) -> ExpectReturn<Args, R> {
-        var copy = self
-        copy.argumentCaptor = captor
-        
-        return copy
-    }
-}
-
-public extension ExpectReturn {
+public extension OnMatchAction {
     enum Action {
         case `return`(R)
         case perform((Args) -> R)
@@ -83,11 +152,11 @@ public extension ExpectReturn {
     
     /// Assumes expectation will be triggerred specific number of times.
     func willRepeatedly(_ times: ExpectTimes, _ action: Action) {
-        addExpectation(description, times, matcher, argumentCaptor, action.action)
+        addExpectation(description, times, matcher, argumentCaptors, action.action)
     }
 }
 
-public extension ExpectReturn where R == Void {
+public extension OnMatchAction where R == Void {
     /// Assumes expectation will be triggerred only once.
      func willOnce() {
         willOnce(.return(()))
@@ -100,31 +169,49 @@ public extension ExpectReturn where R == Void {
 }
 
 
-// MARK: - ArgumentCaptor
+// MARK: Capturing arguments
+
+public extension OnMatchAction {
+    /// Adds 'captor' that captures arguments.
+    func capture(_ captor: ArgumentCaptor<Args>) -> OnMatchAction<Args, R> {
+        var copy = self
+        copy.argumentCaptors.append(captor)
+        
+        return copy
+    }
+}
 
 public extension ArgumentCaptor {
     /// Array of captured arguments. Last value is the latest captured one.
     var captured: [Args] { capturedArgs }
     
-    /// Creates captor. 'onCapture' block will be called on each matched call.
-    static func create(_ onCapture: @escaping (Args) -> Void = { _ in }) -> ArgumentCaptor<Args> {
-        ArgumentCaptor<Args>(onCapture)
+    /// Creates usual captor.
+    static func create() -> ArgumentCaptor<Args> {
+        ArgumentCaptor<Args>()
+    }
+    
+    /// Creates captor with initial value.
+    static func create(initialValue: Args) -> InitedArgumentCaptor<Args> {
+        InitedArgumentCaptor<Args>(initialValue)
     }
 }
 
+public extension InitedArgumentCaptor {
+    var lastCaptured: Args { captured.last ?? initialValue }
+}
 
-// MARK: - MockMethod
 
-public extension MockMethod {
-    /// Makes an expectation regarding method call.
-    func expect(_ description: String) -> ExpectMatch<Args, R> {
-        ExpectMatch(description: description, addExpectation: addExpectation)
+// MARK: - Other + Internal/Private
+
+public class MockFunction<Args, R> {
+    init (_ defaultCaptor: ArgumentCaptor<Args>? = nil) {
+        self.defaultCaptor = defaultCaptor
     }
     
     /// Should be called inside mocked method implementation, passing all method parameters as Args tuple.
-    func evaluate(_ args: Args, function: String = #function) -> R? {
+    func evaluate(_ args: Args, _ mockEntityName: String) -> R? {
         guard let expectation = find(args, skip: 0) else {
-            XCTFail("Unexpected call to \(function).")
+            XCTFail("Unexpected call to '\(mockEntityName)'.")
             return nil
         }
         
@@ -132,27 +219,7 @@ public extension MockMethod {
         
         return expectation.action(args)
     }
-}
-
-public extension MockMethod where Args == Void {
-    /// Should be called inside mocked method implementation.
-    func evaluate(function: String = #function) -> R? {
-        evaluate((), function: function)
-    }
-}
-
-
-// MARK: - Other + Internal/Private
-
-public class MockMethod<Args, R> {
-    /// Creates MockMethod
-    public init(_ test: XCTestCase) {
-        self.test = test
-    }
     
-    public convenience init() {
-        self.init(.currentTestCase)
-    }
     
     //  MARK: Private
     
@@ -170,16 +237,18 @@ public class MockMethod<Args, R> {
     }
     
     
+    private let testCaseProvider = CurrentTestCaseProvider()
     private var expectations: [Expectation] = []
-    private let test: XCTestCase
+    private let defaultCaptor: ArgumentCaptor<Args>?
     
     
-    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captor: ArgumentCaptor<Args>?, action: @escaping (Args) -> R) {
+    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captors: [ArgumentCaptor<Args>], action: @escaping (Args) -> R) {
+        let test = sMock_explicitCurrentTestCase ?? testCaseProvider.currentTestCase
         let exp = times.expectation(test: test, description: description)
-        expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: {
+        expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: { (args) in
             exp?.fulfill()
-            captor?.capture($0)
-            return action($0)
+            captors.forEach { $0.capture(args) }
+            return action(args)
         }))
     }
     
@@ -196,29 +265,31 @@ public class MockMethod<Args, R> {
 
 public struct ExpectMatch<Args, R> {
     fileprivate let description: String
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, ArgumentCaptor<Args>?, @escaping (Args) -> R) -> Void
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], @escaping (Args) -> R) -> Void
 }
 
-public struct ExpectReturn<Args, R> {
+public struct OnMatchAction<Args, R> {
     fileprivate let description: String
     fileprivate let matcher: Matcher<Args>
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, ArgumentCaptor<Args>?, @escaping (Args) -> R) -> Void
-    fileprivate var argumentCaptor: ArgumentCaptor<Args>?
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], @escaping (Args) -> R) -> Void
+    fileprivate var argumentCaptors: [ArgumentCaptor<Args>] = []
+}
+
+public class InitedArgumentCaptor<Args>: ArgumentCaptor<Args> {
+    private let initialValue: Args
+    
+    
+    init(_ initialValue: Args) {
+        self.initialValue = initialValue
+    }
 }
 
 public class ArgumentCaptor<Args> {
-    private let onCapture: (Args) -> Void
     private var capturedArgs: [Args] = []
     
     
     func capture(_ args: Args) {
         capturedArgs.append(args)
-        onCapture(args)
-    }
-    
-    
-    private init(_ onCapture: @escaping (Args) -> Void) {
-        self.onCapture = onCapture
     }
 }
 
@@ -249,7 +320,7 @@ private extension ExpectTimes {
     }
 }
 
-private extension ExpectReturn.Action {
+private extension OnMatchAction.Action {
     var action: (Args) -> R {
         switch self {
         case .return(let value):
@@ -260,17 +331,53 @@ private extension ExpectReturn.Action {
     }
 }
 
-private extension XCTestCase {
-    static var currentTestCase: XCTestCase {
+/// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
+/// Set this variable before using any mock objects.
+/// Usually set it in 'setUp' method of concrete XCTestCase, assigning 'self' to it.
+public var sMock_explicitCurrentTestCase: XCTestCase? = nil
+
+private class CurrentTestCaseProvider {
+    private class Observer: NSObject, XCTestObservation {
+        var observedTestCase: XCTestCase?
+
+        func testCaseWillStart(_ testCase: XCTestCase) {
+            observedTestCase = testCase
+        }
+        
+        func testCaseDidFinish(_ testCase: XCTestCase) {
+            observedTestCase = nil
+        }
+    }
+    
+    private let observer = Observer()
+    
+    
+    init() {
+        XCTestObservationCenter.shared.addTestObserver(observer)
+    }
+    
+    deinit {
+        XCTestObservationCenter.shared.removeTestObserver(observer)
+    }
+    
+    var currentTestCase: XCTestCase {
+        guard let testCase = observer.observedTestCase ?? extractCurrentTestCase else {
+            fatalError("Failed to obtain current test case. Please explicitly set 'sMock_explicitCurrentTestCase' global variable.")
+        }
+        
+        return testCase
+    }
+    
+    private var extractCurrentTestCase: XCTestCase? {
         guard let cl: AnyClass = NSClassFromString("XCTestMisuseObserver"),
             let builtInObservers = XCTestObservationCenter.shared.perform(NSSelectorFromString("observers")),
             let builtInObserverArray = builtInObservers.takeUnretainedValue() as? [NSObject],
             let misuseObserver = builtInObserverArray.first(where: { $0.isKind(of: cl) }),
             let currentCaseAny = misuseObserver.perform(NSSelectorFromString("currentTestCase")),
             let currentCase = currentCaseAny.takeUnretainedValue() as? XCTestCase else {
-                fatalError("Failed to obtain current test case. Please use explicit transfer of current test case.")
+                return nil
         }
-
+        
         return currentCase
     }
 }
