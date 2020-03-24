@@ -46,13 +46,6 @@ public extension ExpectMatch where Args: Equatable {
 }
 
 
-// MARK: Matchers
-
-public func Contains<C: Collection>(_ collection: C) -> Matcher<C.Element> where C.Element: Equatable {
-    return { (element: C.Element) in collection.contains(element) }
-}
-
-
 // MARK: - ExpectReturn
 
 public enum ExpectTimes {
