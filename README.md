@@ -9,7 +9,7 @@
 
 ## Example
 ### Mocking typical method:
-```
+```Swift
 import XCTest
 import sMock
 
@@ -42,7 +42,7 @@ class ExampleTests: XCTestCase {
 ```
 
 ### Mocking asynchronous method + mocking callback
-```
+```Swift
 protocol SomeProtocol {
     func toStringAsync(_ value: Int, reply: @escaping (String) -> Void)
 }
@@ -83,7 +83,7 @@ class ExampleTests: XCTestCase {
 ```
 
 ### Mocking property setter
-```
+```Swift
 protocol SomeProtocol {
     var value: Int { get set }
 }
