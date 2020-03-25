@@ -108,22 +108,18 @@ public class MockSetter<T>: MockFunction<T, Void> {
 
 public typealias Matcher<Args> = (Args) -> Bool
 
-public extension ExpectMatch {
-    /// Expectation will be matched using the matcher.
-    func match(_ matcher: @escaping Matcher<Args>) -> OnMatchAction<Args, R> {
-        OnMatchAction(description: description, matcher: matcher, addExpectation: addExpectation)
-    }
+public enum MatcherType<Args> {
+    /// Match any arguments.
+    case any
     
-    /// Expectation will always be matched.
-    func matchAll() -> OnMatchAction<Args, R> {
-        match({ _ in true })
-    }
+    /// Match arguments using specific matcher.
+    case custom(Matcher<Args>)
 }
 
-public extension ExpectMatch where Args: Equatable {
-    /// Expectation will be matched by comparison with value.
-    func match(_ value: Args) -> OnMatchAction<Args, R> {
-        match({ $0 == value })
+public extension ExpectMatch {
+    /// Expectation will be matched using the matcher.
+    func match(_ matcher: MatcherType<Args>) -> OnMatchAction<Args, R> {
+        OnMatchAction(description: description, matcher: matcher.match, addExpectation: addExpectation)
     }
 }
 
@@ -245,9 +241,10 @@ public class MockFunction<Args, R> {
     private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captors: [ArgumentCaptor<Args>], action: @escaping (Args) -> R) {
         let test = sMock_explicitCurrentTestCase ?? testCaseProvider.currentTestCase
         let exp = times.expectation(test: test, description: description)
-        expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: { (args) in
+        expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: { [weak defaultCaptor] (args) in
             exp?.fulfill()
             captors.forEach { $0.capture(args) }
+            defaultCaptor?.capture(args)
             return action(args)
         }))
     }
@@ -330,6 +327,18 @@ private extension OnMatchAction.Action {
         }
     }
 }
+
+extension MatcherType {
+    func match(_ args: Args) -> Bool {
+        switch self {
+        case .any:
+            return true
+        case .custom(let matcher):
+            return matcher(args)
+        }
+    }
+}
+
 
 /// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
 /// Set this variable before using any mock objects.

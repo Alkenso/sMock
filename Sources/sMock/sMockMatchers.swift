@@ -27,132 +27,154 @@ import Foundation
 
 // MARK: - Multiple argument match
 
-public enum PartialMatcher<Arg> {
-    case any
-    case matcher(Matcher<Arg>)
-    
-    fileprivate func match(_ arg: Arg) -> Bool {
-        switch self {
-        case .any:
-            return true
-        case .matcher(let matcher):
-            return matcher(arg)
-        }
+public extension MatcherType {
+    static func split<T0, T1>(_ matcher0: MatcherType<T0>,
+                              _ matcher1: MatcherType<T1>) -> MatcherType<(T0, T1)> {
+        .custom({ matcher0.match($0.0) && matcher1.match($0.1) })
+    }
+
+    static func split<T0, T1, T2>(_ matcher0: MatcherType<T0>,
+                                  _ matcher1: MatcherType<T1>,
+                                  _ matcher2: MatcherType<T2>) -> MatcherType<(T0, T1, T2)> {
+        .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) })
+    }
+
+    static func split<T0, T1, T2, T3>(_ matcher0: MatcherType<T0>,
+                                      _ matcher1: MatcherType<T1>,
+                                      _ matcher2: MatcherType<T2>,
+                                      _ matcher3: MatcherType<T3>) -> MatcherType<(T0, T1, T2, T3)> {
+        .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) && matcher3.match($0.3) })
+    }
+
+    static func split<T0, T1, T2, T3, T4>(_ matcher0: MatcherType<T0>,
+                                      _ matcher1: MatcherType<T1>,
+                                      _ matcher2: MatcherType<T2>,
+                                      _ matcher3: MatcherType<T3>,
+                                      _ matcher4: MatcherType<T4>) -> MatcherType<(T0, T1, T2, T3, T4)> {
+        .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) && matcher3.match($0.3) && matcher4.match($0.4) })
+    }
+
+    static func split<T0, T1, T2, T3, T4, T5>(_ matcher0: MatcherType<T0>,
+                                      _ matcher1: MatcherType<T1>,
+                                      _ matcher2: MatcherType<T2>,
+                                      _ matcher3: MatcherType<T3>,
+                                      _ matcher4: MatcherType<T4>,
+                                      _ matcher5: MatcherType<T5>) -> MatcherType<(T0, T1, T2, T3, T4, T5)> {
+        .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) && matcher3.match($0.3) && matcher4.match($0.4) && matcher5.match($0.5) })
     }
 }
 
-public func AllOf<T0, T1>(_ matcher0: PartialMatcher<T0>, _ matcher1: PartialMatcher<T1>) -> Matcher<(T0, T1)> {
-    return { matcher0.match($0.0) && matcher1.match($0.1) }
-}
 
-public func AllOf<T0, T1, T2>(_ matcher0: PartialMatcher<T0>, _ matcher1: PartialMatcher<T1>, _ matcher2: PartialMatcher<T2>) -> Matcher<(T0, T1, T2)> {
-    return { matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) }
-}
+// MARK: Equatable
 
-
-// MARK: - Equatable
-
-public func Eq<Args>(_ args: Args) -> Matcher<Args> where Args: Equatable {
-    return { $0 == args }
-}
-
-public func Ne<Args>(_ args: Args) -> Matcher<Args> where Args: Equatable {
-    return { $0 != args }
+public extension MatcherType where Args: Equatable {
+    static func value(_ value: Args) -> MatcherType<Args> {
+        .custom({ $0 == value })
+    }
+    
+    static func notValue(_ value: Args) -> MatcherType<Args> {
+        .custom({ $0 != value })
+    }
 }
 
 
-// MARK: - Comparable
+// MARK: Comparable
 
-public func Ge<Args>(_ args: Args) -> Matcher<Args> where Args: Comparable {
-    return { $0 >= args }
-}
-
-public func Gt<Args>(_ args: Args) -> Matcher<Args> where Args: Comparable {
-    return { $0 > args }
-}
-
-public func Le<Args>(_ args: Args) -> Matcher<Args> where Args: Comparable {
-    return { $0 <= args }
-}
-
-public func Lt<Args>(_ args: Args) -> Matcher<Args> where Args: Comparable {
-    return { $0 < args }
-}
-
-
-// MARK: - Bool
-
-public func IsFalse() -> Matcher<Bool> {
-    return { $0 == false }
-}
-
-public func IsTrue() -> Matcher<Bool> {
-    return { $0 == true}
+public extension MatcherType where Args: Comparable {
+    static func ge(_ value: Args) -> MatcherType<Args> {
+        .custom({ $0 >= value })
+    }
+    
+    static func gt(_ value: Args) -> MatcherType<Args> {
+        .custom({ $0 > value })
+    }
+    
+    static func le(_ value: Args) -> MatcherType<Args> {
+        .custom({ $0 <= value })
+    }
+    
+    static func lt(_ value: Args) -> MatcherType<Args> {
+        .custom({ $0 < value })
+    }
 }
 
 
-// MARK: - String
+// MARK: Bool
 
-public func StrCaseEq<S: StringProtocol>(_ str: S) -> Matcher<String> {
-    return { $0.compare(str, options: .caseInsensitive) == .orderedSame }
+public extension MatcherType where Args == Bool {
+    static func isTrue() -> MatcherType<Args> {
+        .custom({ $0 == true })
+    }
+    
+    static func isFalse() -> MatcherType<Args> {
+        .custom({ $0 == false })
+    }
 }
 
-public func StrCaseNe<S: StringProtocol>(_ str: S) -> Matcher<String> {
-    return { $0.compare(str, options: .caseInsensitive) != .orderedSame }
+
+// MARK: String
+
+public extension MatcherType where Args == String {
+    static func caseEq<S: StringProtocol>(_ str: S) -> MatcherType<Args> {
+        .custom({ $0.compare(str, options: .caseInsensitive) == .orderedSame })
+    }
+    
+    static func caseNe<S: StringProtocol>(_ str: S) -> MatcherType<Args> {
+        .custom({ $0.compare(str, options: .caseInsensitive) != .orderedSame })
+    }
 }
 
 
 // MARK: - Collection
 
-public func Contains<Args>(_ element: Args.Element) -> Matcher<Args> where Args: Collection, Args.Element: Equatable {
-    return { $0.contains(element) }
-}
-
-public func Contains<Args>(_ subset: [Args.Element]) -> Matcher<Args> where Args: Collection, Args.Element: Equatable {
-    return { c in subset.reduce(true) { $0 && c.contains($1) } }
-}
-
-public func StartsWith<Args>(_ prefix: [Args.Element]) -> Matcher<Args> where Args: Collection, Args.Element: Equatable {
-    return { $0.starts(with: prefix) }
-}
-
-public func EndsWith<Args>(_ suffix: [Args.Element]) -> Matcher<Args> where Args: Collection, Args.Element: Equatable {
-    return {
-        guard $0.count < suffix.count else { return false }
-        return $0.dropFirst($0.count - suffix.count).elementsEqual(suffix)
+public extension MatcherType where Args: Collection, Args.Element: Equatable {
+    static func contains(_ element: Args.Element) -> MatcherType<Args> {
+        .custom({ $0.contains(element) })
+    }
+    
+    static func containsAllOf<C>(_ subset: C) -> MatcherType<Args> where C: Collection, C.Element == Args.Element {
+        .custom({ collection in subset.reduce(true) { $0 && collection.contains($1) } })
+    }
+    
+    static func containsAnyOf<C>(_ subset: C) -> MatcherType<Args> where C: Collection, C.Element == Args.Element {
+        .custom({ collection in subset.reduce(false) { $0 || collection.contains($1) } })
+    }
+    
+    static func startsWith<C>(_ prefix: C) -> MatcherType<Args> where C: Collection, C.Element == Args.Element {
+        .custom({ $0.starts(with: prefix) })
+    }
+    
+    static func endsWith<C>(_ suffix: C) -> MatcherType<Args> where C: Collection, C.Element == Args.Element {
+        .custom({
+            guard $0.count < suffix.count else { return false }
+            return $0.dropFirst($0.count - suffix.count).elementsEqual(suffix)
+        })
     }
 }
 
-public func IsEmpty<Args>() -> Matcher<Args> where Args: Collection {
-    return { $0.isEmpty }
-}
-
-public func SizeIs<Args>(_ size: Int) -> Matcher<Args> where Args: Collection {
-    return { $0.count == size }
-}
-
-public func Each<Args>(_ matcher: @escaping Matcher<Args.Element>) -> Matcher<Args> where Args: Collection {
-    return { $0.reduce(true) { $0 && matcher($1) } }
-}
-
-public func AtLeastOne<Args>(_ matcher: @escaping Matcher<Args.Element>) -> Matcher<Args> where Args: Collection {
-    return { $0.reduce(false) { $0 || matcher($1) } }
-}
-
-
-// MARK: - Element in Collection
-
-public func ContainedByCollection<C: Collection>(_ collection: C) -> Matcher<C.Element> where C.Element: Equatable {
-    return { (element: C.Element) in collection.contains(element) }
+public extension MatcherType where Args: Collection {
+    static func isEmpty<Args>() -> MatcherType<Args> where Args: Collection {
+        .custom({ $0.isEmpty })
+    }
+    
+    static func sizeIs<Args>(_ size: Int) -> MatcherType<Args> where Args: Collection {
+        .custom({ $0.count == size })
+    }
+    
+    static func each<Args>(_ matcher: @escaping Matcher<Args.Element>) -> MatcherType<Args> where Args: Collection {
+        .custom({ $0.reduce(true) { $0 && matcher($1) } })
+    }
+    
+    static func atLeastOne<Args>(_ matcher: @escaping Matcher<Args.Element>) -> MatcherType<Args> where Args: Collection {
+        .custom({ $0.reduce(false) { $0 || matcher($1) } })
+    }
 }
 
 
-// MARK: - Optional
+// MARK: Element in Collection
 
-public func IsNil<PureArgs>() -> Matcher<Optional<PureArgs>> {
-    return { $0 == nil}
-}
-
-public func NotNil<PureArgs>() -> Matcher<Optional<PureArgs>> {
-    return { $0 != nil}
+public extension MatcherType where Args: Equatable {
+    static func inCollection<C: Collection>(_ collection: C) -> MatcherType<Args> where Args == C.Element {
+        .custom({ collection.contains($0) })
+    }
 }
