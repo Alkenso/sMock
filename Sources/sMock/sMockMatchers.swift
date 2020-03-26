@@ -28,38 +28,38 @@ import Foundation
 // MARK: - Multiple argument match
 
 public extension MatcherType {
-    static func split<T0, T1>(_ matcher0: MatcherType<T0>,
-                              _ matcher1: MatcherType<T1>) -> MatcherType<(T0, T1)> {
+    static func splitArgs<T0, T1>(_ matcher0: MatcherType<T0>,
+                                  _ matcher1: MatcherType<T1>) -> MatcherType<(T0, T1)> {
         .custom({ matcher0.match($0.0) && matcher1.match($0.1) })
     }
-
-    static func split<T0, T1, T2>(_ matcher0: MatcherType<T0>,
-                                  _ matcher1: MatcherType<T1>,
-                                  _ matcher2: MatcherType<T2>) -> MatcherType<(T0, T1, T2)> {
+    
+    static func splitArgs<T0, T1, T2>(_ matcher0: MatcherType<T0>,
+                                      _ matcher1: MatcherType<T1>,
+                                      _ matcher2: MatcherType<T2>) -> MatcherType<(T0, T1, T2)> {
         .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) })
     }
-
-    static func split<T0, T1, T2, T3>(_ matcher0: MatcherType<T0>,
-                                      _ matcher1: MatcherType<T1>,
-                                      _ matcher2: MatcherType<T2>,
-                                      _ matcher3: MatcherType<T3>) -> MatcherType<(T0, T1, T2, T3)> {
+    
+    static func splitArgs<T0, T1, T2, T3>(_ matcher0: MatcherType<T0>,
+                                          _ matcher1: MatcherType<T1>,
+                                          _ matcher2: MatcherType<T2>,
+                                          _ matcher3: MatcherType<T3>) -> MatcherType<(T0, T1, T2, T3)> {
         .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) && matcher3.match($0.3) })
     }
-
-    static func split<T0, T1, T2, T3, T4>(_ matcher0: MatcherType<T0>,
-                                      _ matcher1: MatcherType<T1>,
-                                      _ matcher2: MatcherType<T2>,
-                                      _ matcher3: MatcherType<T3>,
-                                      _ matcher4: MatcherType<T4>) -> MatcherType<(T0, T1, T2, T3, T4)> {
+    
+    static func splitArgs<T0, T1, T2, T3, T4>(_ matcher0: MatcherType<T0>,
+                                              _ matcher1: MatcherType<T1>,
+                                              _ matcher2: MatcherType<T2>,
+                                              _ matcher3: MatcherType<T3>,
+                                              _ matcher4: MatcherType<T4>) -> MatcherType<(T0, T1, T2, T3, T4)> {
         .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) && matcher3.match($0.3) && matcher4.match($0.4) })
     }
-
-    static func split<T0, T1, T2, T3, T4, T5>(_ matcher0: MatcherType<T0>,
-                                      _ matcher1: MatcherType<T1>,
-                                      _ matcher2: MatcherType<T2>,
-                                      _ matcher3: MatcherType<T3>,
-                                      _ matcher4: MatcherType<T4>,
-                                      _ matcher5: MatcherType<T5>) -> MatcherType<(T0, T1, T2, T3, T4, T5)> {
+    
+    static func splitArgs<T0, T1, T2, T3, T4, T5>(_ matcher0: MatcherType<T0>,
+                                                  _ matcher1: MatcherType<T1>,
+                                                  _ matcher2: MatcherType<T2>,
+                                                  _ matcher3: MatcherType<T3>,
+                                                  _ matcher4: MatcherType<T4>,
+                                                  _ matcher5: MatcherType<T5>) -> MatcherType<(T0, T1, T2, T3, T4, T5)> {
         .custom({ matcher0.match($0.0) && matcher1.match($0.1) && matcher2.match($0.2) && matcher3.match($0.3) && matcher4.match($0.4) && matcher5.match($0.5) })
     }
 }
@@ -68,11 +68,11 @@ public extension MatcherType {
 // MARK: Equatable
 
 public extension MatcherType where Args: Equatable {
-    static func value(_ value: Args) -> MatcherType<Args> {
+    static func equal(_ value: Args) -> MatcherType<Args> {
         .custom({ $0 == value })
     }
     
-    static func notValue(_ value: Args) -> MatcherType<Args> {
+    static func notEqual(_ value: Args) -> MatcherType<Args> {
         .custom({ $0 != value })
     }
 }
@@ -81,19 +81,19 @@ public extension MatcherType where Args: Equatable {
 // MARK: Comparable
 
 public extension MatcherType where Args: Comparable {
-    static func ge(_ value: Args) -> MatcherType<Args> {
+    static func greaterEqual(_ value: Args) -> MatcherType<Args> {
         .custom({ $0 >= value })
     }
     
-    static func gt(_ value: Args) -> MatcherType<Args> {
+    static func greater(_ value: Args) -> MatcherType<Args> {
         .custom({ $0 > value })
     }
     
-    static func le(_ value: Args) -> MatcherType<Args> {
+    static func lessEqual(_ value: Args) -> MatcherType<Args> {
         .custom({ $0 <= value })
     }
     
-    static func lt(_ value: Args) -> MatcherType<Args> {
+    static func less(_ value: Args) -> MatcherType<Args> {
         .custom({ $0 < value })
     }
 }
@@ -115,11 +115,11 @@ public extension MatcherType where Args == Bool {
 // MARK: String
 
 public extension MatcherType where Args == String {
-    static func caseEq<S: StringProtocol>(_ str: S) -> MatcherType<Args> {
+    static func strCaseEqual<S: StringProtocol>(_ str: S) -> MatcherType<Args> {
         .custom({ $0.compare(str, options: .caseInsensitive) == .orderedSame })
     }
     
-    static func caseNe<S: StringProtocol>(_ str: S) -> MatcherType<Args> {
+    static func strCaseNotEqual<S: StringProtocol>(_ str: S) -> MatcherType<Args> {
         .custom({ $0.compare(str, options: .caseInsensitive) != .orderedSame })
     }
 }
