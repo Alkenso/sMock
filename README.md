@@ -2,7 +2,7 @@
 
 ## What is sMock?
 - Swift mock-helping library written with gMock (C++) library approach in mind;
-- has built-in integration with XCTest framework that makes it not only mocking library, but also library that allows easy unit-test coverage of mocked objects;
+- uses XCTestExpectations inside, that makes sMock not only mocking library, but also library that allows easy unit-test coverage of mocked objects expected behavior;
 - lightweight and zero-dependecy;
 - works out-of-the-box without need of generators, tools, etc;
 - required minimum of additional code to prepare mocks.
