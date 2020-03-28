@@ -53,6 +53,33 @@ public extension MockMethod where Args == Void {
     }
 }
 
+public extension MockMethod {
+    /// Should be called inside mocked method implementation.
+    func call<T0, T1>(_ arg0: T0, _ arg1: T1, functionName: String = #function) -> R? where Args == (T0, T1) {
+        call((arg0, arg1), functionName: functionName)
+    }
+    
+    /// Should be called inside mocked method implementation.
+    func call<T0, T1, T2>(_ arg0: T0, _ arg1: T1, _ arg2: T2, functionName: String = #function) -> R? where Args == (T0, T1, T2) {
+        call((arg0, arg1, arg2), functionName: functionName)
+    }
+    
+    /// Should be called inside mocked method implementation.
+    func call<T0, T1, T2, T3>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, functionName: String = #function) -> R? where Args == (T0, T1, T2, T3) {
+        call((arg0, arg1, arg2, arg3), functionName: functionName)
+    }
+    
+    /// Should be called inside mocked method implementation.
+    func call<T0, T1, T2, T3, T4>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, functionName: String = #function) -> R? where Args == (T0, T1, T2, T3, T4) {
+        call((arg0, arg1, arg2, arg3, arg4), functionName: functionName)
+    }
+    
+    /// Should be called inside mocked method implementation.
+    func call<T0, T1, T2, T3, T4, T5>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, _ arg5: T5, functionName: String = #function) -> R? where Args == (T0, T1, T2, T3, T4, T5) {
+        call((arg0, arg1, arg2, arg3, arg4, arg5), functionName: functionName)
+    }
+}
+
 
 // MARK: MockClosure
 
@@ -67,11 +94,7 @@ public class MockClosure<Args, R>: MockFunction<Args, R> {
     }
 }
 
-public extension MockClosure where R == Void {
-    convenience init(_ closureName: String = "Anonymous closure.") {
-        self.init(closureName, returnOnFail: ())
-    }
-    
+public extension MockClosure {
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure() -> (Args) -> R {
         return { self.evaluate($0, self.closureName) ?? self.returnOnFail }
@@ -100,6 +123,12 @@ public extension MockClosure where R == Void {
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) -> R where Args == (T0, T1, T2, T3, T4, T5) {
         return { self.evaluate(($0, $1, $2, $3, $4, $5), self.closureName) ?? self.returnOnFail }
+    }
+}
+
+public extension MockClosure where R == Void {
+    convenience init(_ closureName: String = "Anonymous closure.") {
+        self.init(closureName, returnOnFail: ())
     }
 }
 
