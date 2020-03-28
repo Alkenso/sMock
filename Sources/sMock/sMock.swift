@@ -44,6 +44,11 @@ public class MockMethod<Args, R>: MockFunction<Args, R> {
     public func call(_ args: Args, functionName: String = #function) -> R? {
         evaluate(args, functionName)
     }
+    
+    /// Should be called inside mocked method implementation.
+    public func callT(_ args: Args, functionName: String = #function) throws -> R? {
+        try evaluateT(args, functionName)
+    }
 }
 
 public extension MockMethod where Args == Void {
@@ -99,6 +104,10 @@ public extension MockClosure {
     func asClosure() -> (Args) -> R {
         return { self.evaluate($0) }
     }
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    func asClosureT() -> (Args) throws -> R {
+        return { try self.evaluateT($0) }
+    }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure<T0, T1>() -> (T0, T1) -> R where Args == (T0, T1) {
@@ -127,6 +136,10 @@ public extension MockClosure {
     
     private func evaluate(_ args: Args) -> R {
         return evaluate(args, self.closureName) ?? self.returnOnFail
+    }
+    
+    private func evaluateT(_ args: Args) throws -> R {
+        return try evaluateT(args, self.closureName) ?? self.returnOnFail
     }
 }
 
@@ -203,7 +216,8 @@ public enum ExpectTimes {
 public extension OnMatchAction {
     enum Action {
         case `return`(R)
-        case perform((Args) -> R)
+        case `throw`(Error)
+        case perform((Args) throws -> R)
     }
     
     
@@ -215,6 +229,10 @@ public extension OnMatchAction {
     /// Assumes expectation will be triggerred specific number of times.
     func willRepeatedly(_ times: ExpectTimes, _ action: Action) {
         addExpectation(description, times, matcher, argumentCaptors, action.action)
+    }
+    
+    func willNever() {
+        addExpectation(description, .count(0), matcher, argumentCaptors, nil)
     }
 }
 
@@ -272,6 +290,16 @@ public class MockFunction<Args, R> {
     
     /// Should be called inside mocked method implementation, passing all method parameters as Args tuple.
     func evaluate(_ args: Args, _ mockEntityName: String) -> R? {
+        do {
+            return try evaluateT(args, mockEntityName)
+        } catch {
+            XCTFail("Unexpected throwed error in non-throwing method: \(error).")
+            return nil
+        }
+    }
+    
+    /// Should be called inside mocked method implementation, passing all method parameters as Args tuple.
+    func evaluateT(_ args: Args, _ mockEntityName: String) throws -> R? {
         guard let expectation = find(args, skip: 0) else {
             XCTFail("Unexpected call to '\(mockEntityName)'.")
             return nil
@@ -279,7 +307,7 @@ public class MockFunction<Args, R> {
         
         expectation.count -= 1
         
-        return expectation.action(args)
+        return try expectation.action(args)
     }
     
     
@@ -288,10 +316,10 @@ public class MockFunction<Args, R> {
     private class Expectation {
         var count: Int
         let matcher: Matcher<Args>
-        let action: (Args) -> R
+        let action: (Args) throws -> R?
         
         
-        init(count: Int, matcher: @escaping (Args) -> Bool, action: @escaping (Args) -> R) {
+        init(count: Int, matcher: @escaping (Args) -> Bool, action: @escaping (Args) throws -> R?) {
             self.count = count
             self.matcher = matcher
             self.action = action
@@ -304,14 +332,19 @@ public class MockFunction<Args, R> {
     private let defaultCaptor: ArgumentCaptor<Args>?
     
     
-    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captors: [ArgumentCaptor<Args>], action: @escaping (Args) -> R) {
+    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captors: [ArgumentCaptor<Args>], action: OnMatchAction<Args, R>.ExpectationAction) {
         let test = sMock_explicitCurrentTestCase ?? testCaseProvider.currentTestCase
         let exp = times.expectation(test: test, description: description)
         expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: { [weak defaultCaptor] (args) in
             exp?.fulfill()
             captors.forEach { $0.capture(args) }
             defaultCaptor?.capture(args)
-            return action(args)
+            
+            if let action = action {
+                return try action(args)
+            } else {
+                return nil
+            }
         }))
     }
     
@@ -328,13 +361,15 @@ public class MockFunction<Args, R> {
 
 public struct ExpectMatch<Args, R> {
     fileprivate let description: String
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], @escaping (Args) -> R) -> Void
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], OnMatchAction<Args, R>.ExpectationAction) -> Void
 }
 
 public struct OnMatchAction<Args, R> {
+    fileprivate typealias ExpectationAction = ((Args) throws -> R)?
+    
     fileprivate let description: String
     fileprivate let matcher: Matcher<Args>
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], @escaping (Args) -> R) -> Void
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], ExpectationAction) -> Void
     fileprivate var argumentCaptors: [ArgumentCaptor<Args>] = []
 }
 
@@ -384,10 +419,12 @@ private extension ExpectTimes {
 }
 
 private extension OnMatchAction.Action {
-    var action: (Args) -> R {
+    var action: (Args) throws -> R {
         switch self {
         case .return(let value):
             return { _ in value }
+        case .throw(let error):
+            return { _ in throw error }
         case .perform(let action):
             return action
         }
