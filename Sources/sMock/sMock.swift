@@ -97,32 +97,36 @@ public class MockClosure<Args, R>: MockFunction<Args, R> {
 public extension MockClosure {
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure() -> (Args) -> R {
-        return { self.evaluate($0, self.closureName) ?? self.returnOnFail }
+        return { self.evaluate($0) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure<T0, T1>() -> (T0, T1) -> R where Args == (T0, T1) {
-        return { self.evaluate(($0, $1), self.closureName) ?? self.returnOnFail }
+        return { self.evaluate(($0, $1)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure<T0, T1, T2>() -> (T0, T1, T2) -> R where Args == (T0, T1, T2) {
-        return { self.evaluate(($0, $1, $2), self.closureName) ?? self.returnOnFail }
+        return { self.evaluate(($0, $1, $2)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure<T0, T1, T2, T3>() -> (T0, T1, T2, T3) -> R where Args == (T0, T1, T2, T3) {
-        return { self.evaluate(($0, $1, $2, $3), self.closureName) ?? self.returnOnFail }
+        return { self.evaluate(($0, $1, $2, $3)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) -> R where Args == (T0, T1, T2, T3, T4) {
-        return { self.evaluate(($0, $1, $2, $3, $4), self.closureName) ?? self.returnOnFail }
+        return { self.evaluate(($0, $1, $2, $3, $4)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosure<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) -> R where Args == (T0, T1, T2, T3, T4, T5) {
-        return { self.evaluate(($0, $1, $2, $3, $4, $5), self.closureName) ?? self.returnOnFail }
+        return { self.evaluate(($0, $1, $2, $3, $4, $5)) }
+    }
+    
+    private func evaluate(_ args: Args) -> R {
+        return evaluate(args, self.closureName) ?? self.returnOnFail
     }
 }
 
