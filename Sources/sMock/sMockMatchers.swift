@@ -65,6 +65,19 @@ public extension MatcherType {
 }
 
 
+// MARK: KeyPath
+
+public extension MatcherType {
+    static func keyPath<Root, Value>(_ keyPath: KeyPath<Root, Value>, _ keyPathMatcher: MatcherType<Value>) -> MatcherType<Root> {
+        .custom { keyPathMatcher.match($0[keyPath: keyPath])}
+    }
+    
+    static func keyPath<Root, Value>(_ keyPath: KeyPath<Root, Value>, _ value: Value) -> MatcherType<Root> where Value: Equatable {
+        .keyPath(keyPath, .equal(value))
+    }
+}
+
+
 // MARK: Equatable
 
 public extension MatcherType where Args: Equatable {
