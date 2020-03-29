@@ -100,46 +100,83 @@ public class MockClosure<Args, R>: MockFunction<Args, R> {
 }
 
 public extension MockClosure {
+    // MARK: No throw
+    
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    /// Warning: for throwing closures use 'asClosureT'.
     func asClosure() -> (Args) -> R {
         return { self.evaluate($0) }
     }
+    
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    /// Warning: for throwing closures use 'asClosureT'.
+    func asClosure<T0, T1>() -> (T0, T1) -> R where Args == (T0, T1) {
+        return { self.evaluate(($0, $1)) }
+    }
+    
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    /// Warning: for throwing closures use 'asClosureT'.
+    func asClosure<T0, T1, T2>() -> (T0, T1, T2) -> R where Args == (T0, T1, T2) {
+        return { self.evaluate(($0, $1, $2)) }
+    }
+    
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    /// Warning: for throwing closures use 'asClosureT'.
+    func asClosure<T0, T1, T2, T3>() -> (T0, T1, T2, T3) -> R where Args == (T0, T1, T2, T3) {
+        return { self.evaluate(($0, $1, $2, $3)) }
+    }
+    
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    /// Warning: for throwing closures use 'asClosureT'.
+    func asClosure<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) -> R where Args == (T0, T1, T2, T3, T4) {
+        return { self.evaluate(($0, $1, $2, $3, $4)) }
+    }
+    
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    /// Warning: for throwing closures use 'asClosureT'. 
+    func asClosure<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) -> R where Args == (T0, T1, T2, T3, T4, T5) {
+        return { self.evaluate(($0, $1, $2, $3, $4, $5)) }
+    }
+    
+    private func evaluate(_ args: Args) -> R {
+        evaluate(args, self.closureName) ?? self.returnOnFail
+    }
+    
+    
+    // MARK: Throw
+    
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     func asClosureT() -> (Args) throws -> R {
         return { try self.evaluateT($0) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosure<T0, T1>() -> (T0, T1) -> R where Args == (T0, T1) {
-        return { self.evaluate(($0, $1)) }
+    func asClosureT<T0, T1>() -> (T0, T1) throws -> R where Args == (T0, T1) {
+        return { try self.evaluateT(($0, $1)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosure<T0, T1, T2>() -> (T0, T1, T2) -> R where Args == (T0, T1, T2) {
-        return { self.evaluate(($0, $1, $2)) }
+    func asClosureT<T0, T1, T2>() -> (T0, T1, T2) throws -> R where Args == (T0, T1, T2) {
+        return { try self.evaluateT(($0, $1, $2)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosure<T0, T1, T2, T3>() -> (T0, T1, T2, T3) -> R where Args == (T0, T1, T2, T3) {
-        return { self.evaluate(($0, $1, $2, $3)) }
+    func asClosureT<T0, T1, T2, T3>() -> (T0, T1, T2, T3) throws -> R where Args == (T0, T1, T2, T3) {
+        return { try self.evaluateT(($0, $1, $2, $3)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosure<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) -> R where Args == (T0, T1, T2, T3, T4) {
-        return { self.evaluate(($0, $1, $2, $3, $4)) }
+    func asClosureT<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) throws -> R where Args == (T0, T1, T2, T3, T4) {
+        return { try self.evaluateT(($0, $1, $2, $3, $4)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosure<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) -> R where Args == (T0, T1, T2, T3, T4, T5) {
-        return { self.evaluate(($0, $1, $2, $3, $4, $5)) }
-    }
-    
-    private func evaluate(_ args: Args) -> R {
-        return evaluate(args, self.closureName) ?? self.returnOnFail
+    func asClosureT<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) throws -> R where Args == (T0, T1, T2, T3, T4, T5) {
+        return { try self.evaluateT(($0, $1, $2, $3, $4, $5)) }
     }
     
     private func evaluateT(_ args: Args) throws -> R {
-        return try evaluateT(args, self.closureName) ?? self.returnOnFail
+        try evaluateT(args, self.closureName) ?? self.returnOnFail
     }
 }
 
@@ -170,7 +207,7 @@ public class MockSetter<T>: MockFunction<T, Void> {
     }
     
     /// Should be called inside mocked property setter.
-    public func callSet(_ value: T) {
+    public func callSet(_ value: T)  {
         evaluate(value, propertyName)
     }
 }
@@ -293,18 +330,16 @@ public class MockFunction<Args, R> {
         do {
             return try evaluateT(args, mockEntityName)
         } catch {
-            XCTFail("Unexpected throwed error in non-throwing method: \(error).")
-            return nil
+            fatalError("Throw exception in non-throwing function. Maybe you wanted to call 'throwing' version of call on mock?")
         }
     }
     
-    /// Should be called inside mocked method implementation, passing all method parameters as Args tuple.
     func evaluateT(_ args: Args, _ mockEntityName: String) throws -> R? {
         guard let expectation = find(args, skip: 0) else {
-            XCTFail("Unexpected call to '\(mockEntityName)'.")
+            XCTFail("Unexpected call to \(mockEntityName).")
             return nil
         }
-        
+
         expectation.count -= 1
         
         return try expectation.action(args)
@@ -327,13 +362,13 @@ public class MockFunction<Args, R> {
     }
     
     
-    private let testCaseProvider = CurrentTestCaseProvider()
+    private let testCaseWatcher = CurrentTestCaseWatcher()
     private var expectations: [Expectation] = []
     private let defaultCaptor: ArgumentCaptor<Args>?
     
     
-    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captors: [ArgumentCaptor<Args>], action: OnMatchAction<Args, R>.ExpectationAction) {
-        let test = sMock_explicitCurrentTestCase ?? testCaseProvider.currentTestCase
+    private func addExpectation(_ description: String, times: ExpectTimes, matcher: @escaping Matcher<Args>, captors: [ArgumentCaptor<Args>], action: ExpectationAction<Args, R>) {
+        let test = sMock.explicitCurrentTestCase ?? testCaseWatcher.currentTestCase
         let exp = times.expectation(test: test, description: description)
         expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: { [weak defaultCaptor] (args) in
             exp?.fulfill()
@@ -359,17 +394,18 @@ public class MockFunction<Args, R> {
     }
 }
 
+private typealias ExpectationAction<Args, R> = ((Args) throws -> R)?
+
 public struct ExpectMatch<Args, R> {
     fileprivate let description: String
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], OnMatchAction<Args, R>.ExpectationAction) -> Void
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], ExpectationAction<Args, R>) -> Void
 }
 
 public struct OnMatchAction<Args, R> {
-    fileprivate typealias ExpectationAction = ((Args) throws -> R)?
     
     fileprivate let description: String
     fileprivate let matcher: Matcher<Args>
-    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], ExpectationAction) -> Void
+    fileprivate let addExpectation: (String, ExpectTimes, @escaping Matcher<Args>, [ArgumentCaptor<Args>], ExpectationAction<Args, R>) -> Void
     fileprivate var argumentCaptors: [ArgumentCaptor<Args>] = []
 }
 
@@ -443,28 +479,25 @@ extension MatcherType {
 }
 
 
-/// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
-/// Set this variable before using any mock objects.
-/// Usually set it in 'setUp' method of concrete XCTestCase, assigning 'self' to it.
-public var sMock_explicitCurrentTestCase: XCTestCase? = nil
+public enum sMock {
+    /// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
+    /// Set this variable before using any mock objects.
+    /// Usually set it in 'setUp' method of concrete XCTestCase, assigning 'self' to it.
+    public static var explicitCurrentTestCase: XCTestCase? = nil
+}
 
-private class CurrentTestCaseProvider {
-    private class Observer: NSObject, XCTestObservation {
-        var observedTestCase: XCTestCase?
-
-        func testCaseWillStart(_ testCase: XCTestCase) {
-            observedTestCase = testCase
+private class CurrentTestCaseWatcher {
+    var currentTestCase: XCTestCase {
+        guard let testCase = observedTestCase ?? extractCurrentTestCase else {
+            fatalError("Failed to obtain current test case. Please explicitly set 'sMock_explicitCurrentTestCase' global variable.")
         }
         
-        func testCaseDidFinish(_ testCase: XCTestCase) {
-            observedTestCase = nil
-        }
+        return testCase
     }
     
-    private let observer = Observer()
-    
-    
     init() {
+        observer.onWillStart = { [weak self] in self?.handleTestCaseChange($0) }
+        observer.onDidFinish = { [weak self] _ in self?.handleTestCaseChange(nil) }
         XCTestObservationCenter.shared.addTestObserver(observer)
     }
     
@@ -472,12 +505,22 @@ private class CurrentTestCaseProvider {
         XCTestObservationCenter.shared.removeTestObserver(observer)
     }
     
-    var currentTestCase: XCTestCase {
-        guard let testCase = observer.observedTestCase ?? extractCurrentTestCase else {
-            fatalError("Failed to obtain current test case. Please explicitly set 'sMock_explicitCurrentTestCase' global variable.")
-        }
-        
-        return testCase
+    // MARK: Private
+    
+    private class Observer: NSObject, XCTestObservation {
+        var onWillStart: ((_ testCase: XCTestCase) -> Void)?
+        var onDidFinish: ((_ testCase: XCTestCase) -> Void)?
+
+        func testCaseWillStart(_ testCase: XCTestCase) { onWillStart?(testCase) }
+        func testCaseDidFinish(_ testCase: XCTestCase) { onDidFinish?(testCase) }
+    }
+    
+    private let observer = Observer()
+    private var observedTestCase: XCTestCase?
+    
+    
+    private func handleTestCaseChange(_ testCase: XCTestCase?) {
+        observedTestCase = testCase
     }
     
     private var extractCurrentTestCase: XCTestCase? {
