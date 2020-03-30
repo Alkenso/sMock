@@ -24,6 +24,24 @@
 
 import XCTest
 
+/// sMock configuration.
+public enum sMock {
+    public enum UnexpectedCallBehavior {
+        case warning
+        case failTest
+        case custom((_ mockedEntity: String) -> Void)
+    }
+    /// Handler will be called each time unexpected call on mock object is made.
+    /// By default, in such cases sMock will trigger XCTFail.
+    /// Change this handler in 'setUp' method either on each test case or in the very beginning of the individual test.
+    public static var unexpectedCallBehavior: UnexpectedCallBehavior = .failTest
+    
+    /// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
+    /// Set this variable before using any mock objects.
+    /// Usually set it in 'setUp' method of concrete XCTestCase, assigning 'self' to it.
+    public static var explicitCurrentTestCase: XCTestCase? = nil
+}
+
 
 // MARK: - Mock Engine
 
@@ -336,7 +354,7 @@ public class MockFunction<Args, R> {
     
     func evaluateT(_ args: Args, _ mockEntityName: String) throws -> R? {
         guard let expectation = find(args, skip: 0) else {
-            XCTFail("Unexpected call to \(mockEntityName).")
+            sMock.unexpectedCallBehavior.handleUnexpectedCall(mockEntityName)
             return nil
         }
 
@@ -371,7 +389,8 @@ public class MockFunction<Args, R> {
         let test = sMock.explicitCurrentTestCase ?? testCaseWatcher.currentTestCase
         let exp = times.expectation(test: test, description: description)
         expectations.append(Expectation(count: times.rawCount, matcher: matcher, action: { [weak defaultCaptor] (args) in
-            exp?.fulfill()
+            defer { exp?.fulfill() }
+            
             captors.forEach { $0.capture(args) }
             defaultCaptor?.capture(args)
             
@@ -386,7 +405,6 @@ public class MockFunction<Args, R> {
     private func find(_ args: Args, skip: Int) -> Expectation? {
         for (idx, e) in expectations.dropFirst(skip).enumerated() {
             guard e.matcher(args) else { continue }
-            
             return e.count > 0 ? e : find(args, skip: idx + 1 + skip)
         }
         
@@ -478,12 +496,18 @@ extension MatcherType {
     }
 }
 
-
-public enum sMock {
-    /// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
-    /// Set this variable before using any mock objects.
-    /// Usually set it in 'setUp' method of concrete XCTestCase, assigning 'self' to it.
-    public static var explicitCurrentTestCase: XCTestCase? = nil
+private extension sMock.UnexpectedCallBehavior {
+    func handleUnexpectedCall(_ mockEntityName: String) {
+        let message = "Unexpected call to \(mockEntityName)."
+        switch self {
+        case .warning:
+            print(message)
+        case .failTest:
+            XCTFail(message)
+        case .custom(let handler):
+            handler(mockEntityName)
+        }
+    }
 }
 
 private class CurrentTestCaseWatcher {
@@ -498,11 +522,11 @@ private class CurrentTestCaseWatcher {
     init() {
         observer.onWillStart = { [weak self] in self?.handleTestCaseChange($0) }
         observer.onDidFinish = { [weak self] _ in self?.handleTestCaseChange(nil) }
-        XCTestObservationCenter.shared.addTestObserver(observer)
+        Self.syncOnMainNonblock { XCTestObservationCenter.shared.addTestObserver(observer) }
     }
     
     deinit {
-        XCTestObservationCenter.shared.removeTestObserver(observer)
+        Self.syncOnMainNonblock { XCTestObservationCenter.shared.removeTestObserver(observer) }
     }
     
     // MARK: Private
@@ -521,6 +545,7 @@ private class CurrentTestCaseWatcher {
     
     private func handleTestCaseChange(_ testCase: XCTestCase?) {
         observedTestCase = testCase
+        sMock.unexpectedCallBehavior = .failTest
     }
     
     private var extractCurrentTestCase: XCTestCase? {
@@ -534,5 +559,13 @@ private class CurrentTestCaseWatcher {
         }
         
         return currentCase
+    }
+    
+    static func syncOnMainNonblock<T>(execute work: () throws -> T) rethrows -> T {
+        if Thread.isMainThread {
+            return try work()
+        } else {
+            return try DispatchQueue.main.sync(execute: work)
+        }
     }
 }
