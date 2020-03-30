@@ -126,4 +126,4 @@ class ExampleTests: XCTestCase {
 ## Work to be done
 - [ ] cover mocking code itself with tests
 - [ ] cover matchers with tests
-- [ ] add support of throwing methods and functions
+- [x] add support of throwing methods and functions
