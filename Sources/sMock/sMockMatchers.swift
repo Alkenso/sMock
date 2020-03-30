@@ -65,11 +65,11 @@ public extension MatcherType {
 }
 
 
-// MARK: KeyPath
+// MARK: KeyPath, Optional, Cast
 
 public extension MatcherType {
     static func keyPath<Root, Value>(_ keyPath: KeyPath<Root, Value>, _ keyPathMatcher: MatcherType<Value>) -> MatcherType<Root> {
-        .custom { keyPathMatcher.match($0[keyPath: keyPath])}
+        .custom { keyPathMatcher.match($0[keyPath: keyPath]) }
     }
     
     static func keyPath<Root, Value>(_ keyPath: KeyPath<Root, Value>, _ value: Value) -> MatcherType<Root> where Value: Equatable {
@@ -77,6 +77,32 @@ public extension MatcherType {
     }
 }
 
+public extension MatcherType {
+    static func optional(_ matcher: MatcherType<Args?>) -> MatcherType<Args> {
+        .custom { matcher.match($0) }
+    }
+    
+    static func isNil<T>() -> MatcherType<Args> where Args == Optional<T> {
+        .custom { $0 == nil }
+    }
+    
+    static func notNil<T>() -> MatcherType<Args> where Args == Optional<T> {
+        .custom { $0 != nil }
+    }
+}
+
+public extension MatcherType {
+    static func cast<T>(_ matcher: MatcherType<T>) -> MatcherType<Args> {
+        .cast(to: T.self, matcher)
+    }
+    
+    static func cast<T>(to type: T.Type, _ matcher: MatcherType<T>) -> MatcherType<Args> {
+        .custom {
+            guard let arg = $0 as? T else { return false }
+            return matcher.match(arg)
+        }
+    }
+}
 
 // MARK: Equatable
 
