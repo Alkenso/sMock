@@ -8,7 +8,7 @@
 - required minimum of additional code to prepare mocks.
 
 **Testing with sMock is simple!**
-1. Create Mock class for desired protocol / callback closure;
+1. Create Mock class implementing protocol / subclassing / as callback closure;
 2. Make expectations;
 3. Execute test code;
 4. Wait for expectations using sMock.waitForExpectations()
