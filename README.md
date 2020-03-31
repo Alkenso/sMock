@@ -182,6 +182,12 @@ Matcher | Description | Example
 .strCaseEqual | actual == value (case insensitive) | .strCaseEqual("sTrInG")
 .strCaseNotEqual | actual != value (case insensitive) | .strCaseNotEqual("sTrInG")
 
+##### Args == Result
+Matcher | Description | Example
+--- | --- | ---
+.success<Success, Failure> | If result is success, matches success value using MatcherType<Success>. False if Result.failure | // let mock = MockMethod<Result<Int, Error>, Void>()<br> .success(.equal(10))
+.failure<Success, Failure> | If result is failure, matches error using MatcherType<Failure>. False if Result.success | .failure(.any)
+
 ##### Args: Collection
 ```
 let mock = MockMethod<[Int], Void>()
