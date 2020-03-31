@@ -68,8 +68,8 @@ public extension MatcherType {
 // MARK: KeyPath, Optional, Cast
 
 public extension MatcherType {
-    static func keyPath<Root, Value>(_ keyPath: KeyPath<Root, Value>, _ keyPathMatcher: MatcherType<Value>) -> MatcherType<Root> {
-        .custom { keyPathMatcher.match($0[keyPath: keyPath]) }
+    static func keyPath<Root, Value>(_ keyPath: KeyPath<Root, Value>, _ valueMatcher: MatcherType<Value>) -> MatcherType<Root> {
+        .custom { valueMatcher.match($0[keyPath: keyPath]) }
     }
     
     static func keyPath<Root, Value>(_ keyPath: KeyPath<Root, Value>, _ value: Value) -> MatcherType<Root> where Value: Equatable {
@@ -192,20 +192,20 @@ public extension MatcherType where Args: Collection, Args.Element: Equatable {
 }
 
 public extension MatcherType where Args: Collection {
-    static func isEmpty<Args>() -> MatcherType<Args> where Args: Collection {
+    static func isEmpty() -> MatcherType<Args> {
         .custom({ $0.isEmpty })
     }
     
-    static func sizeIs<Args>(_ size: Int) -> MatcherType<Args> where Args: Collection {
+    static func sizeIs(_ size: Int) -> MatcherType<Args> {
         .custom({ $0.count == size })
     }
     
-    static func each<Args>(_ matcher: @escaping Matcher<Args.Element>) -> MatcherType<Args> where Args: Collection {
-        .custom({ $0.reduce(true) { $0 && matcher($1) } })
+    static func each(_ matcher: MatcherType<Args.Element>) -> MatcherType<Args> {
+        .custom({ $0.reduce(true) { $0 && matcher.match($1) } })
     }
     
-    static func atLeastOne<Args>(_ matcher: @escaping Matcher<Args.Element>) -> MatcherType<Args> where Args: Collection {
-        .custom({ $0.reduce(false) { $0 || matcher($1) } })
+    static func atLeastOne(_ matcher: MatcherType<Args.Element>) -> MatcherType<Args> {
+        .custom({ $0.reduce(false) { $0 || matcher.match($1) } })
     }
 }
 

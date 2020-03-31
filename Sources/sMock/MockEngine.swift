@@ -47,6 +47,17 @@ public enum MatcherType<Args> {
     case custom(Matcher<Args>)
 }
 
+public extension MatcherType {
+    func match(_ args: Args) -> Bool {
+        switch self {
+        case .any:
+            return true
+        case .custom(let matcher):
+            return matcher(args)
+        }
+    }
+}
+
 public extension ExpectMatch {
     /// Expectation will be matched using the matcher.
     func match(_ matcher: MatcherType<Args>) -> OnMatchAction<Args, R> {
@@ -58,6 +69,13 @@ public extension ExpectMatch where Args: Equatable {
     /// Expectation will be matched using the matcher.
     func match(_ value: Args) -> OnMatchAction<Args, R> {
         match(.equal(value))
+    }
+}
+
+public extension ExpectMatch where Args == Void {
+    /// Expectation will be matched using the matcher.
+    func match() -> OnMatchAction<Args, R> {
+        match(.any)
     }
 }
 
@@ -233,20 +251,6 @@ private extension MockFunction {
             self.count = count
             self.matcher = matcher
             self.action = action
-        }
-    }
-}
-
-
-// MARK: - Internal extensions
-
-extension MatcherType {
-    func match(_ args: Args) -> Bool {
-        switch self {
-        case .any:
-            return true
-        case .custom(let matcher):
-            return matcher(args)
         }
     }
 }
