@@ -104,6 +104,7 @@ public extension MatcherType {
     }
 }
 
+
 // MARK: Equatable
 
 public extension MatcherType where Args: Equatable {
@@ -160,6 +161,29 @@ public extension MatcherType where Args == String {
     
     static func strCaseNotEqual<S: StringProtocol>(_ str: S) -> MatcherType<Args> {
         .custom({ $0.compare(str, options: .caseInsensitive) != .orderedSame })
+    }
+}
+
+
+// MARK: Result
+
+public extension MatcherType {
+    static func success<Success, Failure>(_ matcher: MatcherType<Success>) -> MatcherType<Args> where Args == Result<Success, Failure> {
+        .custom({
+            switch $0 {
+            case .success(let value): return matcher.match(value)
+            case .failure: return false
+            }
+        })
+    }
+    
+    static func failure<Success, Failure>(_ matcher: MatcherType<Failure>) -> MatcherType<Args> where Args == Result<Success, Failure> {
+        .custom({
+            switch $0 {
+            case .success: return false
+            case .failure(let error): return matcher.match(error)
+            }
+        })
     }
 }
 
