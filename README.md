@@ -7,6 +7,12 @@
 - works out-of-the-box without need of generators, tools, etc;
 - required minimum of additional code to prepare mocks.
 
+**Testing with sMock is simple!**
+1. Create Mock class for desired protocol / callback closure;
+2. Make expectations;
+3. Execute test code;
+4. Wait for expectations using sMock.waitForExpectations()
+
 ## Example
 ### Mocking typical method:
 ```Swift
@@ -36,7 +42,7 @@ class ExampleTests: XCTestCase {
         
         
         // Don't forget wait underlying expectations!
-        waitForExpectations(timeout: 0.5)
+        sMock.waitForExpectations(timeout: 0.5)
     }
 }
 ```
@@ -77,7 +83,7 @@ class ExampleTests: XCTestCase {
         }
         
         // Don't forget wait underlying expectations!
-        waitForExpectations(timeout: 0.5)
+        sMock.waitForExpectations(timeout: 0.5)
     }
 }
 ```
@@ -118,7 +124,7 @@ class ExampleTests: XCTestCase {
         XCTAssertEqual(mock.value, 1)
         
         // Don't forget wait underlying expectations!
-        waitForExpectations(timeout: 0.5)
+        sMock.waitForExpectations(timeout: 0.5)
     }
 }
 ```
@@ -131,7 +137,7 @@ class ExampleTests: XCTestCase {
 Matcher | Description | Example
 --- | --- | ---
 .any | Matches any argument | .any
-.custom( (Args) -> Bool ) | Use custom closure to match. | .custom( { (args) in return true/false } )
+.custom( (Args) -> Bool ) | Use custom closure to match | .custom( { (args) in return true/false } )
 <br>
 
 ### Predifined
@@ -206,7 +212,7 @@ Matcher | Description | Example
 Action | Description | Example
 --- | --- | ---
 WillOnce | Expect call should be made once and only once | .WillOnce()
-WillRepeatedly | Expect call should be made some number of times (or unlimited) | .WillRepeatedly(.times(10))
+WillRepeatedly | Expect call should be made some number of times (or unlimited) | .WillRepeatedly(.count(10))
 WillNever | Expect call should be never made | .WillNever()
 
 ### Actions
@@ -230,6 +236,14 @@ let initedCaptor = InitedArgumentCaptor<Int>(-1)
 mock.expect("Method called.").match(.any).capture(initedCaptor).willOnce()
 print(initedCaptor.lastCaptured) // Last captured value or default value if nothing captured.
 ```
+
+## sMock configuration
+sMock support custom configuration
+
+Property | Description | Values
+--- | --- | ---
+unexpectedCallBehavior | Determines what will sMock do when unexpected call is made | **.warning**: just print message to console <br> **.failTest**: XCTFail is triggerred <br> **.custom**((_ mockedEntity: String) -> Void): custom function is called <br><br> Default value: .failTest
+waitTimeout: TimeInterval | Default timeout used in 'waitForExpectations' function | Timeout in seconds <br><br> Default value: 0.5
 
 ## Work to be done
 - [ ] cover mocking code itself with tests
