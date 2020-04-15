@@ -51,13 +51,17 @@ public extension sMock {
     /// Wait for currently registered sMock expectations.
     /// - returns: Boolean indicating if all expectations has been waited.
     @discardableResult
-    static func waitForExpectations() -> Bool {
-        waitForExpectations(timeout: waitTimeout, enforceOrder: false) == .completed
+    static func waitForExpectations(file: String = #file, line: Int = #line) -> Bool {
+        waitForExpectations(timeout: waitTimeout, enforceOrder: false, file: file, line: line) == .completed
     }
     
     /// Wait for currently registered sMock expectations. Extended version.
-    static func waitForExpectations(timeout seconds: TimeInterval, enforceOrder enforceOrderOfFulfillment: Bool) -> XCTWaiter.Result {
-        XCTWaiter.wait(for: extractExpectations(), timeout: seconds, enforceOrder: enforceOrderOfFulfillment)
+    static func waitForExpectations(timeout seconds: TimeInterval, enforceOrder enforceOrderOfFulfillment: Bool, file: String = #file, line: Int = #line) -> XCTWaiter.Result {
+        let delegate = FailureReporter(file: file, line: line, timeout: seconds)
+        let waiter = XCTWaiter(delegate: delegate)
+        let waitResult = waiter.wait(for: extractExpectations(), timeout: seconds, enforceOrder: enforceOrderOfFulfillment)
+        
+        return waitResult
     }
     
     /// Extracts all current sMock expectations, transferring them to the caller.
@@ -69,6 +73,11 @@ public extension sMock {
             return currentExpectations
         }
     }
+    
+    ////// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
+    /// Set this variable before using any mock objects.
+    /// Usually set it in 'setUp' method of concrete XCTestCase, assigning 'self' to it.
+    static var explicitCurrentTestCase: XCTestCase? = nil
 }
 
 extension sMock {
@@ -113,10 +122,20 @@ protocol MocksSupporting {
 class MocksSupport {
     static let shared = MocksSupport()
     
+    var currentTestCase: XCTestCase {
+        guard let testCase = observedTestCase ?? Utils.extractCurrentTestCase() ?? sMock.explicitCurrentTestCase else {
+            fatalError("Failed to obtain current test case. Please explicitly set 'sMock.explicitCurrentTestCase' global variable.")
+        }
+        
+        return testCase
+    }
+    
     
     // MARK: Private
     
     private let observer = CurrentTestObserver()
+    private var observedTestCase: XCTestCase?
+    
     
     private init() {
         observer.onWillStart = { [weak self] in self?.handleTestCaseChange($0) }
@@ -129,6 +148,8 @@ class MocksSupport {
     }
     
     private func handleTestCaseChange(_ testCase: XCTestCase?) {
+        observedTestCase = testCase
+        
         // Reset defaults.
         sMock.unexpectedCallBehavior = sMock.defaultUnexpectedCallBehavior
         sMock.defaultWaitTimeout = sMock.defaultWaitTimeout
@@ -154,6 +175,54 @@ private enum Utils {
             return try work()
         } else {
             return try DispatchQueue.main.sync(execute: work)
+        }
+    }
+    
+    static func extractCurrentTestCase() -> XCTestCase? {
+        guard let cl: AnyClass = NSClassFromString("XCTestMisuseObserver"),
+            let builtInObservers = XCTestObservationCenter.shared.perform(NSSelectorFromString("observers")),
+            let builtInObserverArray = builtInObservers.takeUnretainedValue() as? [NSObject],
+            let misuseObserver = builtInObserverArray.first(where: { $0.isKind(of: cl) }),
+            let currentCaseAny = misuseObserver.perform(NSSelectorFromString("currentTestCase")),
+            let currentCase = currentCaseAny.takeUnretainedValue() as? XCTestCase else {
+                return nil
+        }
+        
+        return currentCase
+    }
+}
+
+private extension sMock {
+    class FailureReporter: NSObject, XCTWaiterDelegate {
+        private let _file: String
+        private let _line: Int
+        private let _timeout: TimeInterval
+        
+        init(file: String, line: Int, timeout: TimeInterval) {
+            _file = file
+            _line = line
+            _timeout = timeout
+        }
+        
+        func waiter(_ waiter: XCTWaiter, didTimeoutWithUnfulfilledExpectations unfulfilledExpectations: [XCTestExpectation]) {
+            let expectationsDescription = unfulfilledExpectations.map { "\"\($0.expectationDescription)\"" }.joined(separator: ", ")
+            reportFailure("Asynchronous wait failed: Exceeded timeout of \(_timeout) seconds, with unfulfilled expectations: \(expectationsDescription).")
+        }
+        
+        func waiter(_ waiter: XCTWaiter, fulfillmentDidViolateOrderingConstraintsFor expectation: XCTestExpectation, requiredExpectation: XCTestExpectation) {
+            reportFailure("Failed due to expectation fulfilled in incorrect order: requires \"\(requiredExpectation.expectationDescription)\", actually fulfilled \"\(expectation.expectationDescription)\".")
+        }
+        
+        func waiter(_ waiter: XCTWaiter, didFulfillInvertedExpectation expectation: XCTestExpectation) {
+            reportFailure("Fulfilled inverted expectation \"\(expectation.expectationDescription)\".")
+        }
+        
+        func nestedWaiter(_ waiter: XCTWaiter, wasInterruptedByTimedOutWaiter outerWaiter: XCTWaiter) {
+            reportFailure("Asynchronous waiter \(waiter) failed: interrupted by timeout of containing waiter \(outerWaiter).");
+        }
+        
+        private func reportFailure(_ description: String) {
+            MocksSupport.shared.currentTestCase.recordFailure(withDescription: description, inFile: _file, atLine: _line, expected: true)
         }
     }
 }
