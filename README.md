@@ -20,29 +20,53 @@ import XCTest
 import sMock
 
 
-protocol SomeProtocol {
-    func toString(_ value: Int) -> String
+//  Protocol to be mocked.
+protocol HTTPClient {
+    func sendRequestSync(_ request: String) -> String
 }
 
-class Mock: SomeProtocol {
-    let toStringCall = MockMethod<Int, String>()
+//  Mock itself.
+class MockHTTPClient: HTTPClient {
+    //  Define call's mock entity.
+    let sendRequestSyncCall = MockMethod<String, String>()
     
+    func sendRequestSync(_ request: String) -> String {
+        //  1. Call mock entity with passed arguments.
+        //  2. If method returns non-Void type, provide default value for 'Unexpected call' case.
+        sendRequestSyncCall.call(request) ?? ""
+    }
+}
+
+//  Some entity to be tested.
+struct Client {
+    let httpClient: HTTPClient
     
-    func toString(_ value: Int) -> String {
-        toStringCall.call(value) ?? ""
+    func retrieveRecordsSync() -> [String] {
+        let response = httpClient.sendRequestSync("{ action: 'retrieve_records' }")
+        return response.split(separator: ";").map(String.init)
     }
 }
 
 class ExampleTests: XCTestCase {
     func test_Example() {
-        let mock = Mock()
+        let mock = MockHTTPClient()
+        let client = Client(httpClient: mock)
         
-        mock.toStringCall.expect("'toString' called.").match(2).willOnce(.return("two"))
-        XCTAssertEqual(mock.toString(2), "two")
+        //  Here we expect that method 'sendRequestSync' will be called with 'request' argument equals to "{ action: 'retrieve_records' }".
+        //  We expect that it will be called only once and return "r1;r2;r3" as 'response'.
+        mock.sendRequestSyncCall
+            //  Assign name for exact expectation (useful if expectation fails);
+            .expect("Request sent.")
+            //  This expectation will only be trigerred if argument passed as parameter equals to passed Matcher;
+            .match("{ action: 'retrieve_records' }")
+            //  Assume how many times this method with this arguments (defined in 'match') should be called.
+            .willOnce(
+                //  If method for this expectation called, it will return value we pass in .return(...) statement.
+                .return("r1;r2;r3"))
         
-        
-        // Don't forget wait underlying expectations!
-        sMock.waitForExpectations(timeout: 0.5)
+        //  Client internally requests records using HTTPClient and then parse response.
+        let records = client.retrieveRecordsSync()
+        XCTAssertEqual(records, ["r1", "r2", "r3"])
     }
 }
 ```
