@@ -25,7 +25,7 @@ protocol HTTPClient {
     func sendRequestSync(_ request: String) -> String
 }
 
-//  Mock itself.
+//  Mock implementation.
 class MockHTTPClient: HTTPClient {
     //  Define call's mock entity.
     let sendRequestSyncCall = MockMethod<String, String>()
@@ -78,7 +78,7 @@ protocol HTTPClient {
     func sendRequestSync(_ request: String) -> String
 }
 
-//  Mock itself.
+//  Mock implementation.
 class MockHTTPClient: HTTPClient {
     //  Define call's mock entity.
     let sendRequestSyncCall = MockMethod<String, String>()
@@ -146,7 +146,7 @@ protocol HTTPClient {
     func sendRequestAsync(_ request: String, reply: @escaping (String) -> Void)
 }
 
-//  Mock object.
+//  Mock implementation.
 class MockHTTPClient: HTTPClient {
     //  Define call's mock entity.
     let sendRequestAsyncCall = MockMethod<(String, (String) -> Void), Void>()
