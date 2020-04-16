@@ -14,7 +14,7 @@
 4. Wait for expectations using sMock.waitForExpectations()
 
 ## Example
-### Mocking typical method:
+### Mocking synchronous method:
 ```Swift
 import XCTest
 import sMock
@@ -71,43 +71,147 @@ class ExampleTests: XCTestCase {
 }
 ```
 
-### Mocking asynchronous method + mocking callback
+### Mocking synchronous method + mocking asynchonous callback
 ```Swift
-protocol SomeProtocol {
-    func toStringAsync(_ value: Int, reply: @escaping (String) -> Void)
+//  Protocol to be mocked.
+protocol HTTPClient {
+    func sendRequestSync(_ request: String) -> String
 }
 
-class Mock: SomeProtocol {
-    let toStringAsyncCall = MockMethod<(Int, (String) -> Void), Void>()
+//  Mock itself.
+class MockHTTPClient: HTTPClient {
+    //  Define call's mock entity.
+    let sendRequestSyncCall = MockMethod<String, String>()
     
+    func sendRequestSync(_ request: String) -> String {
+        //  1. Call mock entity with passed arguments.
+        //  2. If method returns non-Void type, provide default value for 'Unexpected call' case.
+        sendRequestSyncCall.call(request) ?? ""
+    }
+}
+
+//  Some entity to be tested.
+struct Client {
+    let httpClient: HTTPClient
     
-    func toStringAsync(_ value: Int, reply: @escaping (String) -> Void) {
-        toStringAsyncCall.call((value, reply))
+    func retrieveRecordsAsync(completion: @escaping ([String]) -> Void) {
+        let response = httpClient.sendRequestSync("{ action: 'retrieve_records' }")
+        completion(response.split(separator: ";").map(String.init))
     }
 }
 
 class ExampleTests: XCTestCase {
     func test_Example() {
-        let mock = Mock()
+        let mock = MockHTTPClient()
+        let client = Client(httpClient: mock)
         
-        let repeats = 10
-        let mockCallback = MockClosure<String, Void>()
-        mockCallback.expect("Reply block called.")
-            .match("two") // Expect argument is always 'two'.
-            .willRepeatedly(.count(repeats)) // Expect to be called 'repeats' times.
+        //  Here we expect that method 'sendRequestSync' will be called with 'request' argument equals to "{ action: 'retrieve_records' }".
+        //  We expect that it will be called only once and return "r1;r2;r3" as 'response'.
+        mock.sendRequestSyncCall
+            //  Assign name for exact expectation (useful if expectation fails);
+            .expect("Request sent.")
+            //  This expectation will only be trigerred if argument passed as parameter equals to passed Matcher;
+            .match("{ action: 'retrieve_records' }")
+            //  Assume how many times this method with this arguments (defined in 'match') should be called.
+            .willOnce(
+                //  If method for this expectation called, it will return value we pass in .return(...) statement.
+                .return("r1;r2;r3"))
         
-        mock.toStringAsyncCall.expect("'toStringAsync' called.")
-            .match(.splitArgs(.equal(2), .any)) // Expect 0 argument will be '2' and second may be any.
-            .willRepeatedly(.count(repeats), // Expect to be called 'repeats' times.
-                            .perform({ $0.1("two") })) // AND each matched call will invoke reply block with argument 'two'.
+        //  Here we use 'MockClosure' mock entity to ensure that 'completion' handler is called.
+        //  We expect it will be called only once and it's argument is ["r1", "r2", "r3"].
+        let completionCall = MockClosure<[String], Void>()
+        completionCall
+            //  Assign name for exact expectation (useful if expectation fails);
+            .expect("Records retrieved.")
+            //  This expectation will only be trigerred if argument passed as parameter equals to passed Matcher;
+            .match(["r1", "r2", "r3"])
+            //  Assume how many times this method with this arguments (defined in 'match') should be called.
+            .willOnce()
         
-        // As expected, invoke mock.foo 'repeats' times.
-        for _ in 0..<repeats {
-            mock.toStringAsync(2, reply: mockCallback.asClosure())
+        //  Client internally requests records using HTTPClient and then parse response.
+        //  Returns response in completion handler.
+        client.retrieveRecordsAsync(completion: completionCall.asClosure())
+        
+        
+        //  Don't forget to wait for potentially async operations.
+        sMock.waitForExpectations()
+    }
+}
+```
+
+### Mocking synchronous method + mocking asynchonous callback
+```Swift
+//  Protocol to be mocked.
+protocol HTTPClient {
+    func sendRequestAsync(_ request: String, reply: @escaping (String) -> Void)
+}
+
+//  Mock object.
+class MockHTTPClient: HTTPClient {
+    //  Define call's mock entity.
+    let sendRequestAsyncCall = MockMethod<(String, (String) -> Void), Void>()
+    
+    func sendRequestAsync(_ request: String, reply: @escaping (String) -> Void) {
+        //  Call mock entity with passed arguments.
+        sendRequestAsyncCall.call(request, reply)
+    }
+}
+
+//  Some entity to be tested.
+struct Client {
+    let httpClient: HTTPClient
+    
+    func retrieveRecordsAsync(completion: @escaping ([String]) -> Void) {
+        httpClient.sendRequestAsync("{ action: 'retrieve_records' }") { (response) in
+            completion(response.split(separator: ";").map(String.init))
         }
+    }
+}
+
+class ExampleTests: XCTestCase {
+    func test_Example() {
+        let mock = MockHTTPClient()
+        let client = Client(httpClient: mock)
         
-        // Don't forget wait underlying expectations!
-        sMock.waitForExpectations(timeout: 0.5)
+        //  Here we expect that method 'sendRequestAsync' will be called with 'request' argument equals to "{ action: 'retrieve_records' }".
+        //  We expect that it will be called only once and return "r1;r2;r3" as 'response'.
+        mock.sendRequestAsyncCall
+            //  Assign name for exact expectation (useful if expectation fails);
+            .expect("Request sent.")
+            //  This expectation will only be trigerred if argument passed as parameter equals to passed Matcher;
+            .match(
+                //  SplitArgs allows to apply different Matcher to each argument (splitting tuple);
+                .splitArgs(
+                    //  Matcher for first argument (here: request);
+                    .equal("{ action: 'retrieve_records' }"),
+                    //  Matcher for second argument (here: reply block);
+                    .any))
+            //  Assume how many times this method with this arguments (defined in 'match') should be called.
+            .willOnce(
+                //  If method for this expectation called, it will perform specific handler with all arguments of the call.
+                //  (Here: when mached, it will call 'reply' closure with argument "r1;r2;r3").
+                .perform({ (_, reply) in
+                    reply("r1;r2;r3")
+                }))
+        
+        //  Here we use 'MockClosure' mock entity to ensure that 'completion' handler is called.
+        //  We expect it will be called only once and it's argument is ["r1", "r2", "r3"].
+        let completionCall = MockClosure<[String], Void>()
+        completionCall
+            //  Assign name for exact expectation (useful if expectation fails);
+            .expect("Records retrieved.")
+            //  This expectation will only be trigerred if argument passed as parameter equals to passed Matcher;
+            .match(["r1", "r2", "r3"])
+            //  Assume how many times this method with this arguments (defined in 'match') should be called.
+            .willOnce()
+        
+        //  Client internally requests records using HTTPClient and then parse response.
+        //  Returns response in completion handler.
+        client.retrieveRecordsAsync(completion: completionCall.asClosure())
+        
+        
+        //  Don't forget to wait for potentially async operations.
+        sMock.waitForExpectations()
     }
 }
 ```
@@ -134,6 +238,8 @@ class ExampleTests: XCTestCase {
         
         XCTAssertEqual(mock.value, -1)
         
+        //  Set expectations for setter calls. We expect only value 'set'.
+        //  Get may be called any number of times.
         mock.valueCall.expect("First value did set.").match(.less(10)).willOnce()
         mock.valueCall.expect("Second value did set.").match(.any).willOnce()
         mock.valueCall.expect("Third value did set.").match(.equal(1)).willOnce()
@@ -147,8 +253,7 @@ class ExampleTests: XCTestCase {
         mock.value = 1
         XCTAssertEqual(mock.value, 1)
         
-        // Don't forget wait underlying expectations!
-        sMock.waitForExpectations(timeout: 0.5)
+        //  At the end of the test, if any expectation has not been trigerred, it will fail the test.
     }
 }
 ```
