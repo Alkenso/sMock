@@ -13,8 +13,8 @@
 3. Execute test code;
 4. Wait for expectations using sMock.waitForExpectations()
 
-## Example
-### Mocking synchronous method:
+## Examples
+### Mocking synchronous method
 ```Swift
 import XCTest
 import sMock
@@ -139,7 +139,7 @@ class ExampleTests: XCTestCase {
 }
 ```
 
-### Mocking synchronous method + mocking asynchonous callback
+### Mocking asynchronous method + mocking asynchonous callback
 ```Swift
 //  Protocol to be mocked.
 protocol HTTPClient {
