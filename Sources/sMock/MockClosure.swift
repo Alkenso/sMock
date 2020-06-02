@@ -122,3 +122,16 @@ public extension MockClosure {
         try evaluateT(args, self.closureName) ?? self.returnOnFail
     }
 }
+
+public extension MockClosure where Args == Void {
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    /// Warning: for throwing closures use 'asClosureT'.
+    func asClosure() -> () -> R {
+        return { self.evaluate(()) }
+    }
+    
+    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
+    func asClosureT() -> () throws -> R {
+        return { try self.evaluateT(()) }
+    }
+}
