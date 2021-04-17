@@ -13,6 +13,12 @@
 3. Execute test code;
 4. Wait for expectations using sMock.waitForExpectations()
 
+### Library family
+You can also find Swift libraries for macOS / *OS development
+- [SwiftConvenience](https://github.com/Alkenso/SwiftConvenience): Swift common extensions and utilities used in everyday development
+- [sXPC](https://github.com/Alkenso/sXPC): Swift type-safe wrapper around NSXPCConnection and proxy object
+- [sLaunchctl](https://github.com/Alkenso/sLaunchctl): Swift API to register and manage daemons and user-agents
+
 ## Examples
 ### Mocking synchronous method
 ```Swift
