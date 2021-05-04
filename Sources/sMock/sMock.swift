@@ -222,7 +222,10 @@ private extension sMock {
         }
         
         private func reportFailure(_ description: String) {
-            MocksSupport.shared.currentTestCase.recordFailure(withDescription: description, inFile: _file, atLine: _line, expected: true)
+            let location = XCTSourceCodeLocation(filePath: _file, lineNumber: _line)
+            let context = XCTSourceCodeContext(location: location)
+            let issue = XCTIssue(type: .assertionFailure, compactDescription: description, detailedDescription: nil, sourceCodeContext: context, associatedError: nil, attachments: [])
+            MocksSupport.shared.currentTestCase.record(issue)
         }
     }
 }
