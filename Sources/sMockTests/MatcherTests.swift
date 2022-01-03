@@ -22,28 +22,33 @@
  * SOFTWARE.
  */
 
+import sMock
 import XCTest
 
-
-public class MockSetter<T>: MockFunction<T, Void> {
-    private let propertyName: String
-    private let captor: InitedArgumentCaptor<T>
-
-    
-    public init(_ propertyName: String, _ value: T) {
-        self.propertyName = propertyName
-        self.captor = .init(value)
+class MatcherTests: XCTestCase {
+    func test_allOf() {
+        let mTrue = Matcher<Int> { _ in true }
+        let mFalse = Matcher<Int> { _ in false }
         
-        super.init(captor)
+        XCTAssertTrue(Matcher<Int>.allOf(mTrue)(10))
+        XCTAssertFalse(Matcher<Int>.allOf(mFalse)(10))
+        
+        XCTAssertTrue(Matcher<Int>.allOf(mTrue, mTrue)(10))
+        XCTAssertFalse(Matcher<Int>.allOf(mTrue, mFalse)(10))
+        XCTAssertFalse(Matcher<Int>.allOf(mFalse, mFalse)(10))
     }
     
-    /// Should be called inside mocked property getter.
-    public func callGet() -> T {
-        captor.lastCaptured
-    }
-    
-    /// Should be called inside mocked property setter.
-    public func callSet(_ value: T)  {
-        evaluate(value, propertyName)
+    func test_anyOf() {
+        let mTrue = Matcher<Int> { _ in true }
+        let mFalse = Matcher<Int> { _ in false }
+        
+        XCTAssertTrue(Matcher<Int>.anyOf(mTrue)(10))
+        XCTAssertFalse(Matcher<Int>.anyOf(mFalse)(10))
+        
+        XCTAssertTrue(Matcher<Int>.anyOf(mTrue, mTrue)(10))
+        XCTAssertTrue(Matcher<Int>.anyOf(mTrue, mFalse)(10))
+        XCTAssertFalse(Matcher<Int>.anyOf(mFalse, mFalse)(10))
+        
+        sMock.waitForExpectations()
     }
 }

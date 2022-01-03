@@ -25,50 +25,69 @@
 import XCTest
 
 
-public class MockMethod<Args, R>: MockFunction<Args, R> {
-    public init() { }
-    
-    /// Should be called inside mocked method implementation.
-    public func call(_ args: Args, functionName: String = #function) -> R? {
-        evaluate(args, functionName)
+public class MockMethod<Args, R>: _MockFunctionBase<Args, R, Void> {
+    override func finalize() {
+        ()
     }
     
     /// Should be called inside mocked method implementation.
-    public func callT(_ args: Args, functionName: String = #function) throws -> R? {
-        try evaluateT(args, functionName)
+    public func call(_ args: Args, function: String = #function) -> R? {
+        evaluate(args, function)
+    }
+    
+    /// Should be called inside mocked method implementation.
+    public func callT(_ args: Args, function: String = #function) throws -> R? {
+        try evaluateT(args, function)
     }
 }
 
-public extension MockMethod where Args == Void {
-    /// Should be called inside mocked method implementation.
-    func call(functionName: String = #function) -> R? {
-        call((), functionName: functionName)
-    }
-}
-
-public extension MockMethod {
-    /// Should be called inside mocked method implementation.
-    func call<T0, T1>(_ arg0: T0, _ arg1: T1, functionName: String = #function) -> R? where Args == (T0, T1) {
-        call((arg0, arg1), functionName: functionName)
+extension MockMethod {
+    public func call(function: String = #function) -> R? where Args == Void {
+        call((), function: function)
     }
     
-    /// Should be called inside mocked method implementation.
-    func call<T0, T1, T2>(_ arg0: T0, _ arg1: T1, _ arg2: T2, functionName: String = #function) -> R? where Args == (T0, T1, T2) {
-        call((arg0, arg1, arg2), functionName: functionName)
+    public func call<T0, T1>(_ arg0: T0, _ arg1: T1, function: String = #function) -> R? where Args == (T0, T1) {
+        call((arg0, arg1), function: function)
     }
     
-    /// Should be called inside mocked method implementation.
-    func call<T0, T1, T2, T3>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, functionName: String = #function) -> R? where Args == (T0, T1, T2, T3) {
-        call((arg0, arg1, arg2, arg3), functionName: functionName)
+    public func call<T0, T1, T2>(_ arg0: T0, _ arg1: T1, _ arg2: T2, function: String = #function) -> R? where Args == (T0, T1, T2) {
+        call((arg0, arg1, arg2), function: function)
     }
     
-    /// Should be called inside mocked method implementation.
-    func call<T0, T1, T2, T3, T4>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, functionName: String = #function) -> R? where Args == (T0, T1, T2, T3, T4) {
-        call((arg0, arg1, arg2, arg3, arg4), functionName: functionName)
+    public func call<T0, T1, T2, T3>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, function: String = #function) -> R? where Args == (T0, T1, T2, T3) {
+        call((arg0, arg1, arg2, arg3), function: function)
     }
     
-    /// Should be called inside mocked method implementation.
-    func call<T0, T1, T2, T3, T4, T5>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, _ arg5: T5, functionName: String = #function) -> R? where Args == (T0, T1, T2, T3, T4, T5) {
-        call((arg0, arg1, arg2, arg3, arg4, arg5), functionName: functionName)
+    public func call<T0, T1, T2, T3, T4>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, function: String = #function) -> R? where Args == (T0, T1, T2, T3, T4) {
+        call((arg0, arg1, arg2, arg3, arg4), function: function)
+    }
+    
+    public func call<T0, T1, T2, T3, T4, T5>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, _ arg5: T5, function: String = #function) -> R? where Args == (T0, T1, T2, T3, T4, T5) {
+        call((arg0, arg1, arg2, arg3, arg4, arg5), function: function)
+    }
+    
+    
+    public func callT(function: String = #function) throws -> R? where Args == Void {
+        try callT((), function: function)
+    }
+    
+    public func callT<T0, T1>(_ arg0: T0, _ arg1: T1, function: String = #function) throws -> R? where Args == (T0, T1) {
+        try callT((arg0, arg1), function: function)
+    }
+    
+    public func callT<T0, T1, T2>(_ arg0: T0, _ arg1: T1, _ arg2: T2, function: String = #function) throws -> R? where Args == (T0, T1, T2) {
+        try callT((arg0, arg1, arg2), function: function)
+    }
+    
+    public func callT<T0, T1, T2, T3>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, function: String = #function) throws -> R? where Args == (T0, T1, T2, T3) {
+        try callT((arg0, arg1, arg2, arg3), function: function)
+    }
+    
+    public func callT<T0, T1, T2, T3, T4>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, function: String = #function) throws -> R? where Args == (T0, T1, T2, T3, T4) {
+        try callT((arg0, arg1, arg2, arg3, arg4), function: function)
+    }
+    
+    public func callT<T0, T1, T2, T3, T4, T5>(_ arg0: T0, _ arg1: T1, _ arg2: T2, _ arg3: T3, _ arg4: T4, _ arg5: T5, function: String = #function) throws -> R? where Args == (T0, T1, T2, T3, T4, T5) {
+        try callT((arg0, arg1, arg2, arg3, arg4, arg5), function: function)
     }
 }

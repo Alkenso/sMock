@@ -25,113 +25,129 @@
 import XCTest
 
 
-public class MockClosure<Args, R>: MockFunction<Args, R> {
+public class MockClosure<Args, R>: _MockFunctionBase<Args, R, _AnyMockClosureCreator<Args, R>> {
     private let closureName: String
     private let returnOnFail: R
     
-    
-    public init(_ closureName: String = "Anonymous closure.", returnOnFail: R) {
+    public init(_ closureName: String = "Anonymous closure", returnOnFail: R) {
         self.closureName = closureName
         self.returnOnFail = returnOnFail
+        
+        super.init()
     }
-}
-
-public extension MockClosure where R == Void {
-    convenience init(_ closureName: String = "Anonymous closure.") {
+    
+    public convenience init(_ closureName: String = "Anonymous closure") where R == Void {
         self.init(closureName, returnOnFail: ())
     }
+    
+    override func finalize() -> _AnyMockClosureCreator<Args, R> {
+        .init(fnAsClosure: asClosure, fnAsClosureT: asClosureT)
+    }
 }
 
-public extension MockClosure {
+extension MockClosure: _MockClosureCreator {
     // MARK: No throw
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     /// Warning: for throwing closures use 'asClosureT'.
-    func asClosure() -> (Args) -> R {
-        return { self.evaluate($0) }
+    public func asClosure() -> (Args) -> R {
+        return { self.evaluate($0, self.closureName) ?? self.returnOnFail }
+    }
+    
+    public func asClosureT() -> (Args) throws -> R {
+        return { try self.evaluateT($0, self.closureName) ?? self.returnOnFail }
+    }
+}
+
+public protocol _MockClosureCreator {
+    associatedtype Args
+    associatedtype R
+    
+    func asClosure() -> (Args) -> R
+    func asClosureT() -> (Args) throws -> R
+}
+
+public struct _AnyMockClosureCreator<Args, R>: _MockClosureCreator {
+    let fnAsClosure: () -> (Args) -> R
+    let fnAsClosureT: () -> (Args) throws -> R
+    
+    public func asClosure() -> (Args) -> R { fnAsClosure() }
+    public func asClosureT() -> (Args) throws -> R { fnAsClosureT() }
+}
+
+extension _MockClosureCreator {
+    // MARK: No throw
+    
+    public func asClosure() -> () -> R where Args == Void {
+        return { self.evaluate(()) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     /// Warning: for throwing closures use 'asClosureT'.
-    func asClosure<T0, T1>() -> (T0, T1) -> R where Args == (T0, T1) {
+    public func asClosure<T0, T1>() -> (T0, T1) -> R where Args == (T0, T1) {
         return { self.evaluate(($0, $1)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     /// Warning: for throwing closures use 'asClosureT'.
-    func asClosure<T0, T1, T2>() -> (T0, T1, T2) -> R where Args == (T0, T1, T2) {
+    public func asClosure<T0, T1, T2>() -> (T0, T1, T2) -> R where Args == (T0, T1, T2) {
         return { self.evaluate(($0, $1, $2)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     /// Warning: for throwing closures use 'asClosureT'.
-    func asClosure<T0, T1, T2, T3>() -> (T0, T1, T2, T3) -> R where Args == (T0, T1, T2, T3) {
+    public func asClosure<T0, T1, T2, T3>() -> (T0, T1, T2, T3) -> R where Args == (T0, T1, T2, T3) {
         return { self.evaluate(($0, $1, $2, $3)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     /// Warning: for throwing closures use 'asClosureT'.
-    func asClosure<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) -> R where Args == (T0, T1, T2, T3, T4) {
+    public func asClosure<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) -> R where Args == (T0, T1, T2, T3, T4) {
         return { self.evaluate(($0, $1, $2, $3, $4)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
     /// Warning: for throwing closures use 'asClosureT'. 
-    func asClosure<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) -> R where Args == (T0, T1, T2, T3, T4, T5) {
+    public func asClosure<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) -> R where Args == (T0, T1, T2, T3, T4, T5) {
         return { self.evaluate(($0, $1, $2, $3, $4, $5)) }
     }
     
     private func evaluate(_ args: Args) -> R {
-        evaluate(args, self.closureName) ?? self.returnOnFail
+        asClosure()(args)
     }
-    
     
     // MARK: Throw
     
-    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosureT() -> (Args) throws -> R {
-        return { try self.evaluateT($0) }
+    public func asClosureT() -> () throws -> R where Args == Void {
+        return { try self.evaluateT(()) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosureT<T0, T1>() -> (T0, T1) throws -> R where Args == (T0, T1) {
+    public func asClosureT<T0, T1>() -> (T0, T1) throws -> R where Args == (T0, T1) {
         return { try self.evaluateT(($0, $1)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosureT<T0, T1, T2>() -> (T0, T1, T2) throws -> R where Args == (T0, T1, T2) {
+    public func asClosureT<T0, T1, T2>() -> (T0, T1, T2) throws -> R where Args == (T0, T1, T2) {
         return { try self.evaluateT(($0, $1, $2)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosureT<T0, T1, T2, T3>() -> (T0, T1, T2, T3) throws -> R where Args == (T0, T1, T2, T3) {
+    public func asClosureT<T0, T1, T2, T3>() -> (T0, T1, T2, T3) throws -> R where Args == (T0, T1, T2, T3) {
         return { try self.evaluateT(($0, $1, $2, $3)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosureT<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) throws -> R where Args == (T0, T1, T2, T3, T4) {
+    public func asClosureT<T0, T1, T2, T3, T4>() -> (T0, T1, T2, T3, T4) throws -> R where Args == (T0, T1, T2, T3, T4) {
         return { try self.evaluateT(($0, $1, $2, $3, $4)) }
     }
     
     /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosureT<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) throws -> R where Args == (T0, T1, T2, T3, T4, T5) {
+    public func asClosureT<T0, T1, T2, T3, T4, T5>() -> (T0, T1, T2, T3, T4, T5) throws -> R where Args == (T0, T1, T2, T3, T4, T5) {
         return { try self.evaluateT(($0, $1, $2, $3, $4, $5)) }
     }
     
     private func evaluateT(_ args: Args) throws -> R {
-        try evaluateT(args, self.closureName) ?? self.returnOnFail
-    }
-}
-
-public extension MockClosure where Args == Void {
-    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    /// Warning: for throwing closures use 'asClosureT'.
-    func asClosure() -> () -> R {
-        return { self.evaluate(()) }
-    }
-    
-    /// Represents mocked method as usual closure. Conveniet to use when mocking callbacks.
-    func asClosureT() -> () throws -> R {
-        return { try self.evaluateT(()) }
+        try asClosureT()(args)
     }
 }
