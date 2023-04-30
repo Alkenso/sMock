@@ -26,7 +26,21 @@ import XCTest
 
 // MARK: - MockFunctionBase
 
-public class _MockFunctionBase<Args, R, Finalize> {
+public protocol _ExpectCreator<Args, R, Finalize> {
+    associatedtype Args
+    associatedtype R
+    associatedtype Finalize
+    
+    func expect(_ description: String) -> OnExpect<Args, R, Finalize>
+}
+
+extension _ExpectCreator {
+    public func expect(_ description: String) -> OnMatch<Args, R, Finalize> where Args == Void {
+        (expect(description) as OnExpect<Args, R, Finalize>).match()
+    }
+}
+
+public class _MockFunctionBase<Args, R, Finalize>: _ExpectCreator {
     private var allExpectations: [ArmedExpectation<Args, R>] = []
     
     public init() { }
@@ -48,10 +62,6 @@ public class _MockFunctionBase<Args, R, Finalize> {
             self.armExpectation($0)
             return self.finalize()
         }
-    }
-    
-    public func expect(_ description: String) -> OnMatch<Args, R, Finalize> where Args == Void {
-        (expect(description) as OnExpect<Args, R, Finalize>).match()
     }
     
     // MARK: Evaluate calls

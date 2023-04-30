@@ -24,7 +24,6 @@
 
 import XCTest
 
-
 public class MockClosure<Args, R>: _MockFunctionBase<Args, R, _AnyMockClosureCreator<Args, R>> {
     private let closureName: String
     private let returnOnFail: R
@@ -41,7 +40,7 @@ public class MockClosure<Args, R>: _MockFunctionBase<Args, R, _AnyMockClosureCre
     }
     
     override func finalize() -> _AnyMockClosureCreator<Args, R> {
-        .init(fnAsClosure: asClosure, fnAsClosureT: asClosureT)
+        .init(parent: self, fnAsClosure: asClosure, fnAsClosureT: asClosureT)
     }
 }
 
@@ -59,7 +58,7 @@ extension MockClosure: _MockClosureCreator {
     }
 }
 
-public protocol _MockClosureCreator {
+public protocol _MockClosureCreator<Args, R> {
     associatedtype Args
     associatedtype R
     
@@ -67,12 +66,21 @@ public protocol _MockClosureCreator {
     func asClosureT() -> (Args) throws -> R
 }
 
-public struct _AnyMockClosureCreator<Args, R>: _MockClosureCreator {
+public struct _AnyMockClosureCreator<Args, R> {
+    let parent: MockClosure<Args, R>
     let fnAsClosure: () -> (Args) -> R
     let fnAsClosureT: () -> (Args) throws -> R
-    
+}
+
+extension _AnyMockClosureCreator: _MockClosureCreator {
     public func asClosure() -> (Args) -> R { fnAsClosure() }
     public func asClosureT() -> (Args) throws -> R { fnAsClosureT() }
+}
+
+extension _AnyMockClosureCreator: _ExpectCreator {
+    public func expect(_ description: String) -> OnExpect<Args, R, _AnyMockClosureCreator<Args, R>> {
+        parent.expect(description)
+    }
 }
 
 extension _MockClosureCreator {

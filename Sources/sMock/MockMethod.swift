@@ -24,7 +24,6 @@
 
 import XCTest
 
-
 public class MockMethod<Args, R>: _MockFunctionBase<Args, R, Void> {
     override func finalize() {
         ()
