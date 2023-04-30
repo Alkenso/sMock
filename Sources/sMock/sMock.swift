@@ -27,8 +27,8 @@ import XCTest
 public enum sMock { }
 
 /// sMock configuration.
-public extension sMock {
-    enum UnexpectedCallBehavior {
+extension sMock {
+    public enum UnexpectedCallBehavior {
         /// Only warns (print) about unexpected call of mocked entities.
         case warning
         
@@ -42,21 +42,21 @@ public extension sMock {
     /// Handler will be called each time unexpected call on mock object is made.
     /// By default, in such cases sMock will trigger XCTFail.
     /// Change this handler in 'setUp' method either on each test case or in the very beginning of the individual test.
-    static var unexpectedCallBehavior: UnexpectedCallBehavior = .failTest
+    public static var unexpectedCallBehavior: UnexpectedCallBehavior = .failTest
     
     /// Timeout used when calling `waitForExpectations() -> Bool` method.
     /// Change this value in 'setUp' method either on each test case or in the very beginning of the individual test.
-    static var waitTimeout: TimeInterval = 0.5
+    public static var waitTimeout: TimeInterval = 0.5
     
     /// Wait for currently registered sMock expectations.
     /// - returns: Boolean indicating if all expectations has been waited.
     @discardableResult
-    static func waitForExpectations(file: String = #file, line: Int = #line) -> Bool {
+    public static func waitForExpectations(file: String = #file, line: Int = #line) -> Bool {
         waitForExpectations(timeout: waitTimeout, enforceOrder: false, file: file, line: line) == .completed
     }
     
     /// Wait for currently registered sMock expectations. Extended version.
-    static func waitForExpectations(timeout seconds: TimeInterval, enforceOrder enforceOrderOfFulfillment: Bool, file: String = #file, line: Int = #line) -> XCTWaiter.Result {
+    public static func waitForExpectations(timeout seconds: TimeInterval, enforceOrder enforceOrderOfFulfillment: Bool, file: String = #file, line: Int = #line) -> XCTWaiter.Result {
         let delegate = FailureReporter(file: file, line: line, timeout: seconds)
         let waiter = XCTWaiter(delegate: delegate)
         let waitResult = waiter.wait(for: extractExpectations(), timeout: seconds, enforceOrder: enforceOrderOfFulfillment)
@@ -65,7 +65,7 @@ public extension sMock {
     }
     
     /// Extracts all current sMock expectations, transferring them to the caller.
-    static func extractExpectations() -> [XCTestExpectation] {
+    public static func extractExpectations() -> [XCTestExpectation] {
         expectationsSyncQueue.sync {
             let currentExpectations = expectations
             expectations = []
@@ -77,7 +77,7 @@ public extension sMock {
     ////// Workaround when 'CurrentTestCaseProvider.currentTestCase' fails due to unknown reason.
     /// Set this variable before using any mock objects.
     /// Usually set it in 'setUp' method of concrete XCTestCase, assigning 'self' to it.
-    static var explicitCurrentTestCase: XCTestCase? = nil
+    public static var explicitCurrentTestCase: XCTestCase? = nil
 }
 
 extension sMock {
@@ -114,10 +114,6 @@ private extension sMock {
 }
 
 // MARK: - MocksSupport
-
-protocol MocksSupporting {
-    var mocksSupport: MocksSupport { get }
-}
 
 class MocksSupport {
     static let shared = MocksSupport()

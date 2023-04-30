@@ -14,6 +14,11 @@ let package = Package(
     targets: [
         .target(
             name: "sMock",
-            dependencies: []),
+            dependencies: []
+        ),
+        .testTarget(
+            name: "sMockTests",
+            dependencies: ["sMock"]
+        ),
     ]
 )
